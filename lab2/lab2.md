@@ -1,22 +1,18 @@
 ---
+documentclass: report 
+papersize: a4 
+fontsize: 12pt
+date: \today
+lang: en
 title: Αρχιτεκτονική Προηγμένων Υπολογιστών και Επιταχυντών Lab 1 Report
 author:
-- Δάιος Γρηγόριος - **ΑΕΜ**  10334
+- Δάιος Γρηγόριος - **ΑΕΜ** 10334   
 - Παπαδάκης Κωνσταντίνος Φώτιος - **ΑΕΜ** 10371
-documentclass: report
-papersize: a4
-fontsize: 10pt # text font size
 toc: true # table of contents
-numbersections: true # page numbering
+numbersections: true
 geometry: margin=2cm # modify left/right paper margins
-mainfont: "DejaVu Serif"
-date: \today
-lang: 
-- en
-- gr
+mainfont: "Nimbus Roman" # open source "Times New Roman"
 ---
-
-\newpage 
 
 # Exercise 1
 
@@ -33,24 +29,33 @@ lang:
 In our implementation we create two instances of the A, B and C 2D arrays. One which holds the data stored inside DRAM and one which holds the data inside BRAM. The reason why we decided to split the data is so that we could implement array_partition later on, which needs our matrices to reside in BRAM. When it comes to FFs and LUTs they are directly proportional to the size of our matrices because enlarging the matrices' dimensions leads to more hardware needed to translate the software. Additionally, it turned out that since our math operations are simple subtractions between low bit unsigned integers, DSPs were not utilized. 
 
 ## Interface 
+AXI is a family of AMBA (Advanced Microcontroller Bus Architecture) protocols.
 
 ### m_axi  
-Connects 
+A full AXI-4 master interface which enables reading and writing A, B, C directly to DRAM.
 ```
 #pragma HLS INTERFACE m_axi port=A depth=1024 offset=slave
 #pragma HLS INTERFACE m_axi port=B depth=1024 offset=slave
 #pragma HLS INTERFACE m_axi port=C depth=1024 offset=slave
 ```
+- **m_axi**: 
+- **offset=slave**: the runtime base address is provided via an AXI-Lite register
+- **depth=1024**: number of elements in the array
+
 ### s_axilite
-Connects
+An AXI4-Lite slave interface that the CPU will use to program the accelerator. Used for:
+
+- Writing A’s addresses
+- Writing B’s addresses
+- Writing C’s addresses
+- Starting the Kernel
+
 ```
 #pragma HLS INTERFACE s_axilite port=A bundle=control
 #pragma HLS INTERFACE s_axilite port=B bundle=control
 #pragma HLS INTERFACE s_axilite port=C bundle=control
 #pragma HLS INTERFACE s_axilite port=return bundle=control
 ```
-
-\newpage
 
 ## Pragmas
 
@@ -96,8 +101,6 @@ Pipelining allows identical assembly operations to be parallelized by executing 
 #pragma HLS pipeline II=1
 ```
 
-\newpage
-
 # Exercise 2
 
 | Name/Loop        | Latency (cycles) | Latency (ns) | Interval | Pipelined | BRAM | DSP |  FF   | LUT   | URAM |
@@ -108,7 +111,7 @@ Pipelining allows identical assembly operations to be parallelized by executing 
 | Loop 3           | 65539            | 6.550E5      | 65539    | no        | 0    | 0   | 1061  | 1055  | 0    |
 
 
-For an array of $256 \times 256$ we have the following results:
+For an array of $256 \times 256$ we get the following results:
 
 | | |
 | - | - |
@@ -121,6 +124,8 @@ For an array of $256 \times 256$ we have the following results:
 
 # Exercise 3
 
+Here are the results obtained through the cosimulation:
+
 | | |
 | - | - |
 |Total Execution Time | 2,675,185.0 ns |
@@ -132,6 +137,30 @@ For an array of $256 \times 256$ we have the following results:
 # Exercise 4
 
 ## Part 1 
+
+We will integrate some hls directives for optimization in regards to latency. First one will be array partition to create blocks of memory each with it's own port:
+```
+#pragma HLS array_partition variable=A_local complete dim=2
+#pragma HLS array_partition variable=B_local complete dim=2
+#pragma HLS array_partition variable=C_local complete dim=2
+```
+Second one will be the pragmas pipeline for parallelization:
+```
+   for (int i = 0; i < HEIGHT; ++i) 
+        #pragma HLS pipeline II=1
+        for (int j = 0; j < WIDTH; ++j) 
+```
+These optimizations achieve in our array of 256*256 a Latency of :3840cycles. In other words 75 times faster latency than originally.
+
+
+Experimentation with the second dimension of the Array (WIDTH):
+
+| WIDTH | Latency (cycles) | Execution Time          | BRAM | LUTS  |
+|-------|------------------|-------------------------|------|-------|
+| 64    | 1175             |(CTRL)30,175ns(2945cyc)  |      | 19488 |  
+| 128   | 1944             |(CRTL)55,735ns (5501cyc) | 384  | 29889 |  
+| 256   | 3480             |(CRTL)106,945ns(10622cyc)| 768  | 50600 |
+| 512   | 6552             |(CRTL)209,365ns(20864cyc)| 1536 | 92090 |
 
 ## Part 2
 
