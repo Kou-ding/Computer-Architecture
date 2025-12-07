@@ -14,7 +14,7 @@ void sw_ref(uint8_t A[HEIGHT][WIDTH], uint8_t B[HEIGHT][WIDTH], uint8_t C_SW[HEI
     int16_t D[HEIGHT][WIDTH];
     for(int i=0;i<HEIGHT;i++){
         for(int j=0;j<WIDTH;j++){
-            D[i][j]=(uint8_t)A[i][j]-(uint8_t)B[i][j];
+            D[i][j]=(int16_t)A[i][j]-(int16_t)B[i][j];
             if(D[i][j]<0)D[i][j]=-D[i][j];
             if(D[i][j]<T1){
                 C_SW[i][j]=0;

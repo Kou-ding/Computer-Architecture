@@ -5,8 +5,8 @@
 #define T1 32
 #define T2 96
 
-void imageDiffPosterize(const uint8_t A[HEIGHT][WIDTH],
-                       const uint8_t B[HEIGHT][WIDTH],
+void imageDiffPosterize(uint8_t A[HEIGHT][WIDTH],
+                       uint8_t B[HEIGHT][WIDTH],
                        uint8_t C[HEIGHT][WIDTH]) {
 
    // Local buffers that we want to implement in BRAM

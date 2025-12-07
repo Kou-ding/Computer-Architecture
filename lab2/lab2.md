@@ -160,12 +160,12 @@ These optimizations achieve in our array of $256 \times 256$ a Latency of **3840
 
 Experimentation with the second dimension of the Array (WIDTH):
 
-| WIDTH | Latency (cycles) | Execution Time          | BRAM | LUTS  |
-|-------|------------------|-------------------------|------|-------|
-| 64    | 1175             |(CTRL)30,175ns(2945cyc)  |      | 19488 |  
-| 128   | 1944             |(CRTL)55,735ns (5501cyc) | 384  | 29889 |  
-| 256   | 3480             |(CRTL)106,945ns(10622cyc)| 768  | 50600 |
-| 512   | 6552             |(CRTL)209,365ns(20864cyc)| 1536 | 92090 |
+| WIDTH | Latency (cycles) | Execution Time     | BRAM | LUTS  |
+|-------|------------------|--------------------|------|-------|
+| 64    | 1175             | 30,175ns (2945cyc)  |      | 19488 |  
+| 128   | 1944             | 55,735ns (5501cyc) | 384  | 29889 |  
+| 256   | 3480             | 106,945ns (10622cyc)| 768  | 50600 |
+| 512   | 6552             | 209,365ns (20864cyc)| 1536 | 92090 |
 
 ## Part 2
 
@@ -187,11 +187,9 @@ The optimal, between our tested configurations, setup was a pure hardware transl
 
 The total acceleration of our optimal solution is:
 
-| | |
-|-|-|
-|Before| |
-|After| |
-|Acceleration| 100% |
+|Acceleration|
+|------------| 
+| 1886.509%  |
 
 # Zip Contents
 
