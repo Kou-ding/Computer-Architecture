@@ -27,13 +27,14 @@ void imageDiffPosterize(const unsigned int *A,
    unsigned int A_buffer[BUFFER_SIZE];
    unsigned int B_buffer[BUFFER_SIZE];
    unsigned int C_buffer[BUFFER_SIZE];
-   unsigned int C_filt[BUFFER_SIZE];
-   unsigned int S_buffer[BUFFER_SIZE-2]={0};
+   unsigned int C_filt[DATA_SIZE];
+   unsigned int S_buffer[BUFFER_SIZE]={0};
+
 
     // Filter
     int F[3][3] = {0, -1, 0, -1, 5, -1, 0, -1, 0};
 
-    unsigned long int D = 0;
+    long int D = 0;
 
     for (int i = 0; i < size; i += BUFFER_SIZE) {
 // #pragma HLS LOOP_TRIPCOUNT min = c_len max = c_len
@@ -48,14 +49,14 @@ void imageDiffPosterize(const unsigned int *A,
         for (int j = 0; j < chunk_size; j++) {
     // #pragma HLS LOOP_TRIPCOUNT min = c_size max = c_size
     // #pragma HLS PIPELINE II = 1
-            A_buffer[j] = A[i*BUFFER_SIZE + j];
+            A_buffer[j] = A[i + j];
         }
 
         read2:
         for (int j = 0; j < chunk_size; j++) {
     // #pragma HLS LOOP_TRIPCOUNT min = c_size max = c_size
     // #pragma HLS PIPELINE II = 1
-            B_buffer[j] = B[i*BUFFER_SIZE + j];
+            B_buffer[j] = B[i + j];
         }
 
         vadd:
@@ -73,30 +74,45 @@ void imageDiffPosterize(const unsigned int *A,
                 C_buffer[j] = 255;
             }
         }
-        filter:
-        for (int j = 0; j < chunk_size; j++) {
-            // Account for edge csses
-            if(!((i*BUFFER_SIZE+j)==WIDTH && (i*BUFFER_SIZE+j)==0 && i==0 && (i + BUFFER_SIZE) > size)){
-                for (int a = -1; a <= 1; a++) {
-                    for (int b = -1; b <= 1; b++) {
-                        // Filtering
-                        S_buffer[j - 1] = S_buffer[j - 1] + F[a + 1][b + 1] * C[(i + a)*WIDTH+(j + b)];
-                    }
-                }
-                // Clipping inside the matrix
-                C_filt[i*BUFFER_SIZE+j]=clipper(S_buffer[(i-1)*WIDTH+(j-1)]);
-            }  
-            // Clipping in edge cases
-            C_filt[i*BUFFER_SIZE+j]=clipper(C[i*WIDTH+j]);
-        }
-        
         write:
         for (int j = 0; j < chunk_size; j++) {
     // #pragma HLS LOOP_TRIPCOUNT min = c_size max = c_size
     // #pragma HLS PIPELINE II = 1  
-            C[i*BUFFER_SIZE + j] = C_filt[j];
+            C[i + j] = C_buffer[j];
+        }        
+    }
+
+    int Neighbors[3][3];
+    int S=0;
+    read_C_Neighbors:
+    for(int i=0;i<HEIGHT;i++){
+        for(int j=0;j<WIDTH;j++){
+            if(!(i==0 || j==0 || i==HEIGHT-1 || j==WIDTH-1)){
+                for (int k=-1;k<=1;k++){
+                    for (int l=-1;l<=1;l++){
+                        Neighbors[k+1][l+1]=C[(i+k)*WIDTH+(j+l)];
+                    }
+                }
+                S=0;
+                for (int a = -1; a <= 1; a++) {
+                    for (int b = -1; b <= 1; b++) {
+                        // Filtering
+                        S += F[a + 1][b + 1] * Neighbors[a+1][b+1];
+                    }
+                }
+                C_filt[i*WIDTH+j]=clipper(S);
+            }else{
+                C_filt[i*WIDTH+j]=clipper(C[i*WIDTH+j]);
+            }
+        }    
+    }
+    for(int i=0;i<HEIGHT;i++){
+        for(int j=0;j<WIDTH;j++){
+            C[i*WIDTH+j]=C_filt[i*WIDTH+j];
         }
     }
+
+
 }
 
 void sw_ref(unsigned int *A, unsigned int *B, unsigned int *C_SW){
@@ -124,7 +140,7 @@ void sw_ref(unsigned int *A, unsigned int *B, unsigned int *C_SW){
         for (int j = 1; j <= WIDTH - 2; j++) {
             for (int a = -1; a <= 1; a++) {
                 for (int b = -1; b <= 1; b++) {
-                    S[(i - 1)*WIDTH+(j - 1)] = S[(i - 1)*WIDTH+(j - 1)] + F[a + 1][b + 1] * C_SW[(i + a)*WIDTH+(j + b)];
+                    S[(i - 1)*(WIDTH-2)+(j - 1)] = S[(i - 1)*(WIDTH-2)+(j - 1)] + F[a + 1][b + 1] * C_SW[(i + a)*WIDTH+(j + b)];
                 }
             }
         }
@@ -134,9 +150,9 @@ void sw_ref(unsigned int *A, unsigned int *B, unsigned int *C_SW){
     for (int i = 0; i < HEIGHT; i++) {
         for (int j = 0; j < WIDTH; j++) {
             if(i>=1 && i<=HEIGHT-2 && j>=1 && j<=WIDTH-2){
-                C_filt[i*WIDTH+j]=clipper(S[(i-1)*WIDTH+(j-1)]);
+                C_SW[i*WIDTH+j]=clipper(S[(i-1)*(WIDTH-2)+(j-1)]);
             }else{
-                C_filt[i*WIDTH+j]=clipper(C_SW[i*WIDTH+j]);
+                C_SW[i*WIDTH+j]=clipper(C_SW[i*WIDTH+j]);
             }
         }
     }
@@ -150,6 +166,12 @@ int main(){
     unsigned int *C = (unsigned int*)malloc(DATA_SIZE * sizeof(unsigned int));
     unsigned int *C_SW = (unsigned int*)malloc(DATA_SIZE * sizeof(unsigned int));
     int size=DATA_SIZE;
+
+    // Check for allocation failures
+    if (!A || !B || !C || !C_SW) {
+        printf("Memory allocation failed!\n");
+        return -1;
+    }
 
     // Populate A and B
     for(int i=0;i<HEIGHT;i++){
@@ -180,5 +202,12 @@ int main(){
     {
         printf("Test passed!");
     }
+
+    // Free allocated memory
+    free(A);
+    free(B);
+    free(C);
+    free(C_SW);
+    
     return 0;
 }
