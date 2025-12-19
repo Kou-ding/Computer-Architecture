@@ -29,11 +29,17 @@ mainfont: "Nimbus Roman" # open source "Times New Roman"
 
 ## Host Data Transfers
 
-![sw_data_trans](media/sw_host_data_trans.png)
+![sw_data_trans](media/sw_host_data_trans.png){width=80%}
 
 ## Timeline
 
-![sw_timeline](media/sw_timeline.png)
+Entire timeline: 
+
+![sw_timeline](media/sw_timeline.png){width=80%}
+
+Zoomed in:
+
+![sw_timeline_zoom](media/sw_timeline_zoom.png){width=80%}
 
 \newpage
 
