@@ -2,6 +2,9 @@
 #include "event_timer.hpp"
 #include <algorithm>
 #include <vector>
+#include <cstdlib> // For rand() and srand()
+#include <cstdio>  // For printf()
+
 #define HEIGHT 64
 #define WIDTH 64
 #define DATA_SIZE HEIGHT*WIDTH
@@ -18,7 +21,10 @@ int clipper(int element){
     }
     return element;
 }
+// Kernel Function - HW
+void imageDiffPosterize(unsigned int* A, unsigned int* B, unsigned int* C, unsigned int* C_filt, int size);
 
+// SW
 void sw_ref(unsigned int *A, unsigned int *B, unsigned int *C_SW, unsigned int *C_SW_filt){
 
     unsigned long int D;
@@ -63,46 +69,49 @@ void sw_ref(unsigned int *A, unsigned int *B, unsigned int *C_SW, unsigned int *
 
 int main(int argc, char **argv) {
   if (argc != 2) {
-	std::cout << "Usage: " << argv[0] << " <XCLBIN File>" << std::endl;
-	return EXIT_FAILURE;
+    std::cout << "Usage: " << argv[0] << " <XCLBIN File>" << std::endl;
+    return EXIT_FAILURE;
   }
 
   EventTimer et;
 
   std::string binaryFile = argv[1];
-  size_t vector_size_bytes = sizeof(int) * DATA_SIZE;
+  size_t vector_size_bytes = sizeof(unsigned int) * DATA_SIZE; // Changed to unsigned int
   cl_int err;
   cl::Context context;
-  cl::Kernel krnl_vector_add;
+  cl::Kernel krnl_imageDiffPosterize; // Renamed kernel variable
   cl::CommandQueue q;
-  // Allocate Memory in Host Memory
-  // When creating a buffer with user pointer (CL_MEM_USE_HOST_PTR), under the
-  // hood user ptr
-  // is used if it is properly aligned. when not aligned, runtime had no choice
-  // but to create
-  // its own host side buffer. So it is recommended to use this allocator if
-  // user wish to
-  // create buffer using CL_MEM_USE_HOST_PTR to align user buffer to page
-  // boundary. It will
-  // ensure that user buffer is used when user create Buffer/Mem object with
-  // CL_MEM_USE_HOST_PTR
+
+  // Modified Host Memory Allocation
   et.add("Allocate Memory in Host Memory");
-  std::vector<unsigned int, aligned_allocator<int>> source_A(DATA_SIZE);
-  std::vector<unsigned int, aligned_allocator<int>> source_B(DATA_SIZE);
-  std::vector<unsigned int, aligned_allocator<int>> source_C(DATA_SIZE);
-  std::vector<unsigned int, aligned_allocator<int>> source_C_filt(DATA_SIZE);
-  std::vector<unsigned int, aligned_allocator<int>> source_C_SW(DATA_SIZE);
-  std::vector<unsigned int, aligned_allocator<int>> source_C_SW_filt(DATA_SIZE);
+  std::vector<unsigned int, aligned_allocator<unsigned int>> source_A(DATA_SIZE); // Changed type
+  std::vector<unsigned int, aligned_allocator<unsigned int>> source_B(DATA_SIZE); // Changed type
+  std::vector<unsigned int, aligned_allocator<unsigned int>> source_hw_C(DATA_SIZE); // Changed type
+  std::vector<unsigned int, aligned_allocator<unsigned int>> source_hw_C_filt(DATA_SIZE); // Changed type
+  std::vector<unsigned int, aligned_allocator<unsigned int>> source_sw_C(DATA_SIZE); // Changed type
+  std::vector<unsigned int, aligned_allocator<unsigned int>> source_sw_C_filt(DATA_SIZE); // Changed type
   et.finish();
 
-  // Create the test data
+  // Test Data Creation
   et.add("Fill the buffers");
-  std::generate(source_A.begin(), source_A.end(), std::rand);
-  std::generate(source_B.begin(), source_A.end(), std::rand);
+  // Seed for reproducible results (as per original code)
+  srand(3);
+  for (int i = 0; i < HEIGHT; i++) {
+    for (int j = 0; j < WIDTH; j++) {
+        source_A[i*WIDTH+j] = rand() % 256;
+        source_B[i*WIDTH+j] = rand() % 256;
+    }
+  }
+  // Initialize output vectors to zero
+  std::fill(source_hw_C.begin(), source_hw_C.end(), 0);
+  std::fill(source_hw_C_filt.begin(), source_hw_C_filt.end(), 0);
+  std::fill(source_sw_C.begin(), source_sw_C.end(), 0);
+  std::fill(source_sw_C_filt.begin(), source_sw_C_filt.end(), 0);
+  et.finish();
 
-  // Run SW version of imageDiffPosterize
-  sw_ref(source_A.data(), source_B.data(), source_C_SW.data(), source_C_SW_filt.data());
-
+  // Run Software Reference
+  et.add("Run Software Reference");
+  sw_ref(source_A.data(), source_B.data(), source_sw_C.data(), source_sw_C_filt.data());
   et.finish();
 
   // OPENCL HOST CODE AREA START
@@ -116,54 +125,52 @@ int main(int argc, char **argv) {
   cl::Program::Binaries bins{{fileBuf.data(), fileBuf.size()}};
   int valid_device = 0;
   for (unsigned int i = 0; i < devices.size(); i++) {
-	auto device = devices[i];
-	// Creating Context and Command Queue for selected Device
-	OCL_CHECK(err, context = cl::Context(device, NULL, NULL, NULL, &err));
-	OCL_CHECK(err, q = cl::CommandQueue(context, device,
-										CL_QUEUE_PROFILING_ENABLE, &err));
-	std::cout << "Trying to program device[" << i
-			  << "]: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
-	cl::Program program(context, {device}, bins, NULL, &err);
-	if (err != CL_SUCCESS) {
-	  std::cout << "Failed to program device[" << i << "] with xclbin file!\n";
-	} else {
-	  std::cout << "Device[" << i << "]: program successful!\n";
-	  OCL_CHECK(err, krnl_vector_add = cl::Kernel(program, "vadd", &err));
-	  valid_device++;
-	  break; // we break because we found a valid device
-	}
+    auto device = devices[i];
+    // Creating Context and Command Queue for selected Device
+    OCL_CHECK(err, context = cl::Context(device, NULL, NULL, NULL, &err));
+    OCL_CHECK(err, q = cl::CommandQueue(context, device,
+                                        CL_QUEUE_PROFILING_ENABLE, &err));
+    std::cout << "Trying to program device[" << i
+              << "]: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
+    cl::Program program(context, {device}, bins, NULL, &err);
+    if (err != CL_SUCCESS) {
+      std::cout << "Failed to program device[" << i << "] with xclbin file!\n";
+    } else {
+      std::cout << "Device[" << i << "]: program successful!\n";
+      OCL_CHECK(err, krnl_imageDiffPosterize = cl::Kernel(program, "imageDiffPosterize", &err));
+      valid_device++;
+      break; // we break because we found a valid device
+    }
   }
   if (valid_device == 0) {
-	std::cout << "Failed to program any device found, exit!\n";
-	exit(EXIT_FAILURE);
+    std::cout << "Failed to program any device found, exit!\n";
+    exit(EXIT_FAILURE);
   }
   et.finish();
 
   // Allocate Buffer in Global Memory
-  // Buffers are allocated using CL_MEM_USE_HOST_PTR for efficient memory and
-  // Device-to-host communication
   et.add("Allocate Buffer in Global Memory");
-	OCL_CHECK(err, cl::Buffer buffer_A(
-					   context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY,
-					   vector_size_bytes, source_A.data(), &err));
-	OCL_CHECK(err, cl::Buffer buffer_B(
-					   context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY,
-					   vector_size_bytes, source_B.data(), &err));
-	OCL_CHECK(err, cl::Buffer buffer_C(
-					   context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
-					   vector_size_bytes, source_C.data(), &err));
-	OCL_CHECK(err, cl::Buffer buffer_C_filt(
-					   context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY,
-					   vector_size_bytes, source_C_filt.data(), &err));
+  OCL_CHECK(err, cl::Buffer buffer_A(
+                     context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY,
+                     vector_size_bytes, source_A.data(), &err));
+  OCL_CHECK(err, cl::Buffer buffer_B(
+                     context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY,
+                     vector_size_bytes, source_B.data(), &err));
+  OCL_CHECK(err, cl::Buffer buffer_C(
+                     context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
+                     vector_size_bytes, source_hw_C.data(), &err));
+  OCL_CHECK(err, cl::Buffer buffer_C_filt(
+                     context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY,
+                     vector_size_bytes, source_hw_C_filt.data(), &err));
   et.finish();
 
   et.add("Set the Kernel Arguments");
   int size = DATA_SIZE;
-  OCL_CHECK(err, err = krnl_vector_add.setArg(0, buffer_A)); // A
-  OCL_CHECK(err, err = krnl_vector_add.setArg(1, buffer_B)); // B
-  OCL_CHECK(err, err = krnl_vector_add.setArg(2, buffer_C)); // C
-  OCL_CHECK(err, err = krnl_vector_add.setArg(3, buffer_C_filt)); // C_filt
-  OCL_CHECK(err, err = krnl_vector_add.setArg(4, size)); // size
+  OCL_CHECK(err, err = krnl_imageDiffPosterize.setArg(0, buffer_A)); // Adjust argument indices as needed
+  OCL_CHECK(err, err = krnl_imageDiffPosterize.setArg(1, buffer_B));
+  OCL_CHECK(err, err = krnl_imageDiffPosterize.setArg(2, buffer_C));
+  OCL_CHECK(err, err = krnl_imageDiffPosterize.setArg(3, buffer_C_filt));
+  OCL_CHECK(err, err = krnl_imageDiffPosterize.setArg(4, size)); // Adjust argument index as needed
   et.finish();
 
   // Copy input data to device global memory
@@ -176,40 +183,45 @@ int main(int argc, char **argv) {
   // recommended
   // to always use enqueueTask() for invoking HLS kernel
   et.add("Launch the Kernel");
-  OCL_CHECK(err, err = q.enqueueTask(krnl_vector_add));
+  OCL_CHECK(err, err = q.enqueueTask(krnl_imageDiffPosterize)); // Renamed kernel variable
   et.finish();
 
   // Copy Result from Device Global Memory to Host Local Memory
   et.add("Copy Result from Device Global Memory to Host Local Memory");
-  OCL_CHECK(err, err = q.enqueueMigrateMemObjects({buffer_C_filt}, CL_MIGRATE_MEM_OBJECT_HOST));
+  OCL_CHECK(err, err = q.enqueueMigrateMemObjects({buffer_C, buffer_C_filt}, CL_MIGRATE_MEM_OBJECT_HOST)); // Copy both outputs
   OCL_CHECK(err, err = q.finish());
   et.finish();
   // OPENCL HOST CODE AREA END
 
   // Compare the results of the Device to the simulation
+  et.add("Compare the results of the Device to the simulation");
   int errors = 0;
-	et.add("Compare the results of the Device to the simulation");
-	bool match = true;
-	// Calculate SW and HW differences
-	for(int i=0;i<HEIGHT;i++){
-	  for(int j=0;j<WIDTH;j++){
-		  if(source_C_SW_filt[i*WIDTH+j]!=source_C_filt[i*WIDTH+j]){
-			  errors++;
-		  }
-	  }
-	}
-	if (errors>=1) {
-	  std::cout << "Error: There are" << errors << "different pixels.\n" << std::endl;
-	  match = false;
-	}else{
-		std::cout << "Test passed!\n" << std::endl;
-	}
-
+  for (int i = 0; i < HEIGHT; i++) {
+      for (int j = 0; j < WIDTH; j++) {
+          if (source_hw_C_filt[i*WIDTH+j] != source_sw_C_filt[i*WIDTH+j]) {
+              errors++;
+              // Print the first 5 mismatches for debugging
+              if(errors <= 5) {
+                  std::cout << "Error: Result mismatch at [" << i << "][" << j << "]" << std::endl;
+                  std::cout << "CPU filt = " << source_sw_C_filt[i*WIDTH+j]
+                            << ", Device filt = " << source_hw_C_filt[i*WIDTH+j] << std::endl;
+              }
+          }
+      }
+  }
+  bool match = (errors == 0);
   et.finish();
 
   std::cout <<"----------------- Key execution times -----------------" << std::endl;
   et.print();
 
-  std::cout << "TEST " << (match ? "PASSED" : "FAILED") << std::endl;
+  // Report Result
+  if(errors >= 1){
+      std::cout << "There are " << errors << " different pixels." << std::endl;
+      std::cout << "TEST FAILED" << std::endl;
+  } else {
+      std::cout << "TEST PASSED" << std::endl;
+  }
+
   return (match ? EXIT_SUCCESS : EXIT_FAILURE);
 }
