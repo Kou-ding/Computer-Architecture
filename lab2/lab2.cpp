@@ -44,18 +44,18 @@ void imageDiffPosterize(const unsigned int *A,
 
 
 	// Local buffers that we want to implement in BRAM
-   unsigned int A_buffer[BUFFER_SIZE];
-   unsigned int B_buffer[BUFFER_SIZE];
-   unsigned int C_buffer[BUFFER_SIZE];
-   unsigned int C_filt_buffer[BUFFER_SIZE];
+	unsigned int A_buffer[BUFFER_SIZE];
+	unsigned int B_buffer[BUFFER_SIZE];
+	unsigned int C_buffer[BUFFER_SIZE];
+	unsigned int C_filt_buffer[BUFFER_SIZE];
 
-   // Filtering buffers
-   int mid[BUFFER_SIZE + 2];
-   int up[BUFFER_SIZE + 2];
-   int down[BUFFER_SIZE + 2];
+	// Filtering buffers
+	int mid[BUFFER_SIZE + 2];
+	int up[BUFFER_SIZE + 2];
+	int down[BUFFER_SIZE + 2];
 
-   // Difference
-   long int D = 0;
+	// Difference
+	long int D = 0;
 
   // Per iteration of this loop perform BUFFER_SIZE vector addition
   for (int i = 0; i < size; i += BUFFER_SIZE) {
