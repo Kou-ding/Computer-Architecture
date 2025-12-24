@@ -11,6 +11,9 @@ Description:
 #include <stdio.h>
 #include <string.h>
 
+#define T1 32
+#define T2 96
+
 #define BUFFER_SIZE 64
 #define DATAWIDTH 512
 #define VECTOR_SIZE (DATAWIDTH / 32) // vector size is 16 (512/32 = 16)
@@ -64,21 +67,29 @@ extern "C"
 #pragma HLS INTERFACE s_axilite port = size bundle = control
 #pragma HLS INTERFACE s_axilite port = return bundle = control
 
-        uint512_dt v1_local[BUFFER_SIZE]; // Local memory to store vector1
-        uint512_dt v2_local[BUFFER_SIZE];
-        uint512_dt result_local[BUFFER_SIZE]; // Local Memory to store result
+        uint512_dt A_local[BUFFER_SIZE]; // Local memory to store input vectors
+        uint512_dt B_local[BUFFER_SIZE];
+        uint512_dt C_local[BUFFER_SIZE]; // Local Memory to store results
+        uint512_dt C_filt_local[BUFFER_SIZE];
+
+        // Filtering buffers
+        int mid[BUFFER_SIZE + 2];
+        int up[BUFFER_SIZE + 2];
+        int down[BUFFER_SIZE + 2];
 
         // Input vector size for integer vectors. However kernel is directly
         // accessing 512bit data (total 16 elements). So total number of read
         // from global memory is calculated here:
+        // Eg. size = 16 ints -> ((16-1)/16)+1=1 -> 1 memory access needed
+        // Eg. size = 17 ints -> ((17-1)/16)+1=2 -> 2 memory access needed
         int size_in16 = (size - 1) / VECTOR_SIZE + 1;
 
         //Per iteration of this loop perform BUFFER_SIZE vector addition
         for (int i = 0; i < size_in16; i += BUFFER_SIZE) {
 //#pragma HLS PIPELINE
 #pragma HLS DATAFLOW
-#pragma HLS stream variable = v1_local depth = 64
-#pragma HLS stream variable = v2_local depth = 64
+#pragma HLS stream variable = A_local depth = 64
+#pragma HLS stream variable = B_local depth = 64
 
             int chunk_size = BUFFER_SIZE;
 
@@ -87,35 +98,118 @@ extern "C"
                 chunk_size = size_in16 - i;
 
         //burst read first vector from global memory to local memory
-        v1_rd:
+        A_B_read:
             for (int j = 0; j < chunk_size; j++) {
 #pragma HLS pipeline
 #pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
-                v1_local[j] = in1[i + j];
-                v2_local[j] = in2[i + j];
+                A_local[j] = A[i + j];
+                B_local[j] = B[i + j];
             }
 
         //burst read second vector and perform vector addition
-        add:
+        imageDiff:
 			for (int j = 0; j < chunk_size; j++) {
-			#pragma HLS pipeline
-			#pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
-							uint512_dt tmpV1 = v1_local[j];
-							uint512_dt tmpV2 = v2_local[j];
+#pragma HLS pipeline
+#pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
+                uint512_dt tmpA = A_local[j];
+                uint512_dt tmpB = B_local[j];
 
-							uint512_dt tmpOut = 0;
+                uint512_dt tmpC = 0;
 
-							for (int vector = 0; vector < VECTOR_SIZE; vector++) {
-							   #pragma HLS UNROLL
-								ap_uint<32> tmp1 = tmpV1.range(32 * (vector + 1) - 1, vector * 32);
-								ap_uint<32> tmp2 = tmpV2.range(32 * (vector + 1) - 1, vector * 32);
-								tmpOut.range(32 * (vector + 1) - 1, vector * 32) = tmp1 + tmp2;
-							}
+                for (int vector = 0; vector < VECTOR_SIZE; vector++) {
+#pragma HLS UNROLL
+                    // ap_uint<32> tmp1 = tmpV1.range(32 * (vector + 1) - 1, vector * 32);
+                    // ap_uint<32> tmp2 = tmpV2.range(32 * (vector + 1) - 1, vector * 32);
+                    // tmpC.range(32 * (vector + 1) - 1, vector * 32) = tmp1 + tmp2;
+                    //out[i + j] = tmpV1 + tmpV2; // Vector Addition Operation
 
-							out[i + j] = tmpOut;
+                    // image difference
+                    ap_uint<32> D = tmp1 - tmp2;
+                    if(D<0) D=-D;
+                    if (D < T1) {
+                        tmpC.range(32 * (vector + 1) - 1, vector * 32) = 0;
+                    } else if (D < T2) {
+                        tmpC.range(32 * (vector + 1) - 1, vector * 32) = 128;
+                    } else {
+                        tmpC.range(32 * (vector + 1) - 1, vector * 32) = 255;
+                    }
+                }
 
-							//out[i + j]       = tmpV1 + tmpV2; // Vector Addition Operation
+                C[i + j] = tmpC;
 			}
+        
+        // Begin loop anew after forming C matrix    
+        for (int i = 0; i < size_in16; i += BUFFER_SIZE) {
+//#pragma HLS PIPELINE
+#pragma HLS DATAFLOW
+#pragma HLS stream variable = A_local depth = 64
+#pragma HLS stream variable = B_local depth = 64
+
+            int chunk_size = BUFFER_SIZE;
+
+            //boundary checks
+            if ((i + BUFFER_SIZE) > size_in16)
+                chunk_size = size_in16 - i;
+
+            C_read:
+            for (int j = -1; j <= chunk_size; j++) {
+#pragma HLS LOOP_TRIPCOUNT min = c_size max = c_size
+#pragma HLS PIPELINE II = 1
+                int k = j + 1;           // safe buffer index in [0 .. chunk_size+1]
+                int idx = i + j;         // absolute index in flattened image
+
+                for (int vector = 0; vector < VECTOR_SIZE; vector++) {
+#pragma HLS UNROLL
+
+                    if (idx < 0 || idx >= size ) {
+                        mid[k] = up[k] = down[k] = 0;
+                    } else {
+                        mid[k]  = tmpC.range(32 * (vector + 1) - 1, vector * 32);
+                        up[k]   = (idx >= WIDTH)        ? C[idx - WIDTH] : 0;
+                        down[k] = (idx + WIDTH < size)  ? C[idx + WIDTH] : 0;
+                    }
+                }
+            }
+            filtering:
+            for (int j = 0; j < chunk_size; j++) {
+#pragma HLS pipeline
+#pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
+
+                int idx = i + j; // absolute index of center pixel
+                int k   = j + 1; // center position in buffers
+
+                uint512_dt tmpC_filt = 0;
+                for (int vector = 0; vector < VECTOR_SIZE; vector++) {
+#pragma HLS UNROLL
+                    if (!is_interior(idx)) {
+                        // Border output pixel: unchanged
+                        C_filt_local[j] = clipper(mid[k]);
+                    } else {
+                        // Interior output pixel: full 3x3 available from buffers, including border values.
+                        //
+                        // 3x3 window:
+                        // up:   up[k-1]   up[k]   up[k+1]
+                        // mid:  mid[k-1]  mid[k]  mid[k+1]
+                        // down: down[k-1] down[k] down[k+1]
+                        //
+                        // Sharpen kernel (as in your lab):
+                        //  0 -1  0
+                        // -1  5 -1
+                        //  0  -1 0
+                        int center = mid[k];
+                        int up_c   = up[k];
+                        int down_c = down[k];
+                        int left_c = mid[k - 1];
+                        int right_c= mid[k + 1];
+
+                        int val = 5 * center - up_c - down_c - left_c - right_c;
+                        C_filt_local[j] = clipper(val);
+                    }
+                    tmpC_filt.range(32 * (vector + 1) - 1, vector * 32)[i+j] = C_filt_local[j];
+                }
+                
+            }
+
         }
     }
 }
