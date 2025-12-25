@@ -1,3 +1,17 @@
+---
+documentclass: report 
+papersize: a4 
+fontsize: 12pt
+date: \today
+lang: en
+title: Αρχιτεκτονική Προηγμένων Υπολογιστών και Επιταχυντών Gem5 Report
+author: Παπαδάκης Κωνσταντίνος Φώτιος - **ΑΕΜ** 10371
+toc: true # table of contents
+numbersections: true
+geometry: margin=2cm # modify left/right paper margins
+mainfont: "Nimbus Roman" # open source "Times New Roman"
+---
+
 # Gem5 Assignment
 
 In this assignment we are going to be System call Emulation (SE) where we focus on running a specific program in contrast with Full System (FS) mode where we emulate an entire operating system.
@@ -56,4 +70,12 @@ hpi
 
 ## Step 3: First Program
 
-## Step 4: 
+## Step 4: SPEC CPU2006 Benchmark
+
+SPEC CPU2006 is a benchmarking suite that stresses a system's:
+
+- CPU
+- Memory
+- Compiler
+
+It is trying to emulate computationally intensive real usage scenarios.
