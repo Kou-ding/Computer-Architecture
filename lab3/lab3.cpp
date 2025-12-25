@@ -13,6 +13,8 @@ Description:
 
 #define T1 32
 #define T2 96
+#define HEIGHT 128
+#define WIDTH 128
 
 #define BUFFER_SIZE 64
 #define DATAWIDTH 512
@@ -32,20 +34,13 @@ int clipper(int element){
     }
     return element;
 }
+// Refactor it to work with the vectorized code
 int is_interior(int idx) {
     int row = idx / WIDTH;
     int col = idx % WIDTH;
     return (row > 0 && row < HEIGHT-1 && col > 0 && col < WIDTH-1);
 }
 
-/*
-    Vector Addition Kernel Implementation using uint512_dt datatype
-    Arguments:
-        in1   (input)     --> Input Vector1
-        in2   (input)     --> Input Vector2
-        out   (output)    --> Output Vector
-        size  (input)     --> Size of Vector in Integer
-   */
 extern "C"
 {
     void imageDiffPosterize(
@@ -73,15 +68,15 @@ extern "C"
         uint512_dt C_filt_local[BUFFER_SIZE];
 
         // Filtering buffers
-        int mid[BUFFER_SIZE + 2];
-        int up[BUFFER_SIZE + 2];
-        int down[BUFFER_SIZE + 2];
+        uint512_dt mid[BUFFER_SIZE + 2];
+        uint512_dt up[BUFFER_SIZE + 2];
+        uint512_dt down[BUFFER_SIZE + 2];
 
         // Input vector size for integer vectors. However kernel is directly
         // accessing 512bit data (total 16 elements). So total number of read
         // from global memory is calculated here:
-        // Eg. size = 16 ints -> ((16-1)/16)+1=1 -> 1 memory access needed
-        // Eg. size = 17 ints -> ((17-1)/16)+1=2 -> 2 memory access needed
+        // Eg. size = 16 integers -> ((16-1)/16)+1=1 -> 1 memory access needed
+        // Eg. size = 17 integers -> ((17-1)/16)+1=2 -> 2 memory access needed
         int size_in16 = (size - 1) / VECTOR_SIZE + 1;
 
         //Per iteration of this loop perform BUFFER_SIZE vector addition
@@ -118,11 +113,6 @@ extern "C"
 
                 for (int vector = 0; vector < VECTOR_SIZE; vector++) {
 #pragma HLS UNROLL
-                    // ap_uint<32> tmp1 = tmpV1.range(32 * (vector + 1) - 1, vector * 32);
-                    // ap_uint<32> tmp2 = tmpV2.range(32 * (vector + 1) - 1, vector * 32);
-                    // tmpC.range(32 * (vector + 1) - 1, vector * 32) = tmp1 + tmp2;
-                    //out[i + j] = tmpV1 + tmpV2; // Vector Addition Operation
-
                     // image difference
                     ap_uint<32> D = tmp1 - tmp2;
                     if(D<0) D=-D;
@@ -155,16 +145,21 @@ extern "C"
             for (int j = -1; j <= chunk_size; j++) {
 #pragma HLS LOOP_TRIPCOUNT min = c_size max = c_size
 #pragma HLS PIPELINE II = 1
-                int k = j + 1;           // safe buffer index in [0 .. chunk_size+1]
-                int idx = i + j;         // absolute index in flattened image
-
+                // select a specific 512 block which contains the integers we are after
+                uint512_dt tmpMid = mid[j];
+				uint512_dt tmpUp = up[j];
+                uint512_dt tmpDown = down[j];
+                
                 for (int vector = 0; vector < VECTOR_SIZE; vector++) {
 #pragma HLS UNROLL
+
+                    int k = j + 1 + vector; // safe buffer index in [0 .. chunk_size+1]
+                    int idx = i + j + vector; // absolute index in flattened image
 
                     if (idx < 0 || idx >= size ) {
                         mid[k] = up[k] = down[k] = 0;
                     } else {
-                        mid[k]  = tmpC.range(32 * (vector + 1) - 1, vector * 32);
+                        mid[k]  = C[idx];
                         up[k]   = (idx >= WIDTH)        ? C[idx - WIDTH] : 0;
                         down[k] = (idx + WIDTH < size)  ? C[idx + WIDTH] : 0;
                     }
@@ -175,8 +170,8 @@ extern "C"
 #pragma HLS pipeline
 #pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
 
-                int idx = i + j; // absolute index of center pixel
-                int k   = j + 1; // center position in buffers
+                int k = j + 1 + vector; // safe buffer index in [0 .. chunk_size+1]
+                int idx = i + j + vector; // absolute index in flattened image
 
                 uint512_dt tmpC_filt = 0;
                 for (int vector = 0; vector < VECTOR_SIZE; vector++) {
@@ -205,7 +200,7 @@ extern "C"
                         int val = 5 * center - up_c - down_c - left_c - right_c;
                         C_filt_local[j] = clipper(val);
                     }
-                    tmpC_filt.range(32 * (vector + 1) - 1, vector * 32)[i+j] = C_filt_local[j];
+                    C_filt[i+j] = C_filt_local[j];
                 }
                 
             }
