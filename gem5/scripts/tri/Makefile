@@ -4,6 +4,9 @@
 tri: tri.c
 	gcc $< -o $@ 
 
+arm: tri.c
+	arm-linux-gnueabihf-gcc --static $< -o $@ 
+
 # Run the program Eg. make run N=13
 run: tri
 	./tri $(N)
