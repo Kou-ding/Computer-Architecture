@@ -22,6 +22,11 @@ Lab3 improves on Lab2 by:
 - Vectorizing the input/output decreasing the memory accesses
 - Storing the input/output to different banks achieving parallelized memory access 
 
+# Application changes
+
+To be able to vectorize the pixels correctly we assume that the datawidth is 512 and thus contains 16 integers. 
+
+$$\frac{512}{sizeof(int)}=\frac{512}{32}=16$$
 
 
 <!-- SUMMARY -->
