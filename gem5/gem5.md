@@ -9,7 +9,7 @@ author: Παπαδάκης Κωνσταντίνος Φώτιος - **ΑΕΜ** 10
 toc: true # table of contents
 numbersections: true
 geometry: margin=2cm # modify left/right paper margins
-mainfont: "Nimbus Roman" # open source "Times New Roman"
+mainfont: "DejaVu Serif"
 ---
 
 # Gem5 Assignment
@@ -46,7 +46,7 @@ Here the starter_se.py script configures the gem5 emulator by defining the follo
     - 2 memory channels
     - 2 GB
 
-![hello-world](/media/hello-world)
+![hello-world](media/hello-world.png)
 
 | Parameter      | Value  |
 | -------------- | ------ |
@@ -69,6 +69,18 @@ minor
 hpi
 
 ## Step 3: First Program
+
+Next step has us create a simple Clang trinagular number generator program and cross compiling it to run on the gem5 simulator. A triangular number can be defined as:
+
+$$ T_N = \frac{(N+1)*N}{2} $$
+
+
+
+```bash
+./build/ARM/gem5.opt configs/example/se.py 
+    --cpu-type=MinorCPU 
+    --caches -c "/home/arch/Downloads/tri" --options "7"
+```
 
 ## Step 4: SPEC CPU2006 Benchmark
 
