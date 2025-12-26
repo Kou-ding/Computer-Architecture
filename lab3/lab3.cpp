@@ -114,7 +114,7 @@ extern "C"
                 for (int vector = 0; vector < VECTOR_SIZE; vector++) {
 #pragma HLS UNROLL
                     // image difference
-                    ap_uint<32> D = tmp1 - tmp2;
+                    ap_uint<32> D = tmpA.range(32(vector + 1) - 1,vector32) - tmpB.range(32(vector + 1) - 1,vector32);
                     if(D<0) D=-D;
                     if (D < T1) {
                         tmpC.range(32 * (vector + 1) - 1, vector * 32) = 0;
@@ -142,26 +142,33 @@ extern "C"
                 chunk_size = size_in16 - i;
 
             C_read:
-            for (int j = -1; j <= chunk_size; j++) {
+            for (int j = 0; j < chunk_size + 2; j++) {
 #pragma HLS LOOP_TRIPCOUNT min = c_size max = c_size
 #pragma HLS PIPELINE II = 1
-                // select a specific 512 block which contains the integers we are after
-                uint512_dt tmpMid = mid[j];
-				uint512_dt tmpUp = up[j];
-                uint512_dt tmpDown = down[j];
+                // // select a specific 512 block which contains the integers we are after
+                // uint512_dt tmpMid = mid[j];
+				// uint512_dt tmpUp = up[j];
+                // uint512_dt tmpDown = down[j];
                 
                 for (int vector = 0; vector < VECTOR_SIZE; vector++) {
 #pragma HLS UNROLL
 
-                    int k = j + 1 + vector; // safe buffer index in [0 .. chunk_size+1]
-                    int idx = i + j + vector; // absolute index in flattened image
+                    int idx = i + j ; // absolute index in new matrix consisting 512 bit integers
+                    int ichi = (idx)*VECTOR_SIZE + vector; // absolute index in the HEIGHTxWIDTH matrix
 
-                    if (idx < 0 || idx >= size ) {
-                        mid[k] = up[k] = down[k] = 0;
+                    // Start the buffers from 1 element to the left
+                    if (ichi-1 < 0 || ichi-1 >= size ) {
+                        mid[j].range(32 * (vector + 1) - 1, vector * 32) = up[j].range(32 * (vector + 1) - 1, vector * 32) = down[j].range(32 * (vector + 1) - 1, vector * 32) = 0;
                     } else {
-                        mid[k]  = C[idx];
-                        up[k]   = (idx >= WIDTH)        ? C[idx - WIDTH] : 0;
-                        down[k] = (idx + WIDTH < size)  ? C[idx + WIDTH] : 0;
+
+                        mid[j].range(32 * (vector + 1) - 1, vector * 32)  = C[idx].range(32 * (vector + 1) - 1, vector * 32);
+                        // if(idx-1+vector >= WIDTH){
+                        //     up[j].range(32 * (vector + 1) - 1, vector * 32) = C[idx-1 - WIDTH].range(32 * (vector + 1) - 1, vector * 32);
+                        // }else{
+
+                        // }
+                        up[j].range(32 * (vector + 1) - 1, vector * 32)   = (ichi-WIDTH >= 0) ? C[idx - ((WIDTH-1)/VECTOR_SIZE)].range(32 * (vector + 1) - 1, vector * 32) : 0;
+                        down[j].range(32 * (vector + 1) - 1, vector * 32) = (ichi+WIDTH < size)   ? C[idx + ((WIDTH-1)/VECTOR_SIZE)].range(32 * (vector + 1) - 1, vector * 32) : 0;
                     }
                 }
             }
@@ -170,15 +177,14 @@ extern "C"
 #pragma HLS pipeline
 #pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
 
-                int k = j + 1 + vector; // safe buffer index in [0 .. chunk_size+1]
-                int idx = i + j + vector; // absolute index in flattened image
+                int idx = i + j ; // absolute index in new matrix consisting 512 bit integers
+                int ichi = (idx)*VECTOR_SIZE + vector; // absolute index in the HEIGHTxWIDTH matrix
 
-                uint512_dt tmpC_filt = 0;
                 for (int vector = 0; vector < VECTOR_SIZE; vector++) {
 #pragma HLS UNROLL
-                    if (!is_interior(idx)) {
+                    if (!is_interior(ichi)) {
                         // Border output pixel: unchanged
-                        C_filt_local[j] = clipper(mid[k]);
+                        C_filt_local[j].range(32 * (vector + 1) - 1, vector * 32) = clipper(mid[j].range(32 * (vector + 1) - 1, vector * 32));
                     } else {
                         // Interior output pixel: full 3x3 available from buffers, including border values.
                         //
@@ -191,14 +197,14 @@ extern "C"
                         //  0 -1  0
                         // -1  5 -1
                         //  0  -1 0
-                        int center = mid[k];
-                        int up_c   = up[k];
-                        int down_c = down[k];
-                        int left_c = mid[k - 1];
-                        int right_c= mid[k + 1];
+                        int center = mid[j].range(32 * (vector + 1) - 1, vector * 32);
+                        int up_c   = up[j].range(32 * (vector + 1) - 1, vector * 32);
+                        int down_c = down[j].range(32 * (vector + 1) - 1, vector * 32);
+                        int left_c = mid[j].range(32 * (vector-1 + 1) - 1, vector * 32);
+                        int right_c= mid[j].range(32 * (vector+1 + 1) - 1, vector * 32);
 
                         int val = 5 * center - up_c - down_c - left_c - right_c;
-                        C_filt_local[j] = clipper(val);
+                        C_filt_local[j].range(32 * (vector + 1) - 1, vector * 32) = clipper(val);
                     }
                     C_filt[i+j] = C_filt_local[j];
                 }
