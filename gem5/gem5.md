@@ -9,7 +9,7 @@ author: Παπαδάκης Κωνσταντίνος Φώτιος - **ΑΕΜ** 10
 toc: true # table of contents
 numbersections: true
 geometry: margin=2cm # modify left/right paper margins
-mainfont: "DejaVu Serif"
+mainfont: "Liberation Serif"
 ---
 
 # Gem5 Assignment
