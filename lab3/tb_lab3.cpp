@@ -101,11 +101,9 @@ int main(int argc, char** argv) {
     }
     et.finish();
 
-    et.add("Software VADD run");
+    et.add("Run Software Reference");
     // Software Result
-    for (int i = 0; i < DATA_SIZE; i++) {
-        source_sw_results[i] = source_in1[i] + source_in2[i];
-    }
+    sw_ref(source_A.data(), source_B.data(), source_sw_C.data(), source_sw_C_filt.data());
     et.finish();
 
     et.add("OpenCL host code");
