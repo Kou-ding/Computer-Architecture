@@ -127,7 +127,7 @@ extern "C"
 
                 C[i + j] = tmpC;
 			}
-        
+        }
         // Begin loop anew after forming C matrix    
         for (int i = 0; i < size_in16; i += BUFFER_SIZE) {
 //#pragma HLS PIPELINE
@@ -207,10 +207,8 @@ extern "C"
                         C_filt_local[j].range(32 * (vector + 1) - 1, vector * 32) = clipper(val);
                     }
                     C_filt[i+j] = C_filt_local[j];
-                }
-                
+                }    
             }
-
         }
     }
 }
