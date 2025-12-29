@@ -12,11 +12,54 @@ geometry: margin=2cm # modify left/right paper margins
 mainfont: "Liberation Serif"
 ---
 
+
 # Gem5 Assignment
 
 ![gem5-logo](/gem5/media/gem5-logo.png)
 
 In this assignment we are going to be System call Emulation (SE) where we focus on running a specific program in contrast with Full System (FS) mode where we emulate an entire operating system.
+
+## Project Overview
+
+```
+📁 gem5
+├── 📂 bash_scripts - Scripts used to automate running the various benchmarks
+│   
+├── 📂 hello_world
+│   ├── 📂 stats
+│   │   ├── 📄 config.ini
+│   │   ├── 📄 config.ini
+│   │   └── 📄 stats.txt
+│   └── 🐍 starter_se.py - python gem5 running script
+│
+├── 📂 spec_cpu2006
+│   ├── 📂 Results_1 - spec_cpu2006 benchmark results
+│   ├── 📂 Results_2 - spec_cpu2006 benchmark results cpu-clock=1GHz
+│   ├── 📂 Results_3 - spec_cpu2006 benchmark results cpu-clock=4GHz
+│   ├── 📂 Results_4 - spec_cpu2006 benchmark results cpu-clock=4GHz DDR3_2133_x64
+│   └── 📂 Results_5 - spec_cpu2006 benchmark results cache experimentation
+│   
+├── 📂 tri
+│   ├── 📂 MinorCPU - Results with CPU model 1
+│   │   ├── 📄 config.ini
+│   │   ├── 📄 config.ini
+│   │   └── 📄 stats.txt
+│   ├── 📂 TimingSimpleCPU - Results with CPU model 2
+│   │   ├── 📄 config.ini
+│   │   ├── 📄 config.ini
+│   │   └── 📄 stats.txt
+│   ├── ▶️ tri.c - Triangular number finding program
+│   └── ⚙️ Makefile
+│
+├── 📂 media
+│   ├── 🖼️ png 1
+│   ├── 🖼️ png 2
+│   └── 🖼️ etc ...
+│
+├── ⚙️ Makefile - Compiles the report
+├── 📝 gem5.md - The markdown version of the report
+└── 📄 gem5.pdf - The pdf version to the report
+```
 
 ## Step 1: Downloading Gem5
 
@@ -203,8 +246,6 @@ we execute the [run_benchmarks.sh](/gem5/bash_scripts/run_benchmarks.sh) script.
 bash run_benchmarks.sh 
 ```
 
-The terminals output can be seen [here](/gem5/spec_cpu2006/terminal-output.txt)
-
 To gather the important information derived from these benchmarks we use the script [read_results.sh](/gem5/bash_scripts/read_results.sh) which accelerates the gathering process while [stats_finder.ini](/gem5/bash_scripts/stats_finder.ini) specifies the:
 - benchmarks we include in our report,
 - parameters we are searching for in the stats.txt and
@@ -231,15 +272,19 @@ Some basic memory information that can be found on config.ini (or config.json) i
 |l2.cache.size  | 8           | 8           | 8           | 8           | 8           |
 |dram.type      |DDR3_1600_x64|DDR3_1600_x64|DDR3_1600_x64|DDR3_1600_x64|DDR3_1600_x64| 
 
+To figure out the dram type, which is not explicitly states we can use the following values to produce it.
 
+$$device\_bus\_width \times devices\_per\_rank = bus\_bits\Rightarrow$$
 
-$$device\_bus\_width \times devices_per_rank = bus\_bits$$
-$$ 8 \times 8 = 64-bit bus
+$$\Rightarrow 8 \times 8 = 64-bit bus $$
 tCK = 1250ps
-$$ freq = \frac{1}{tCK} = \frac{1}{10^(-12)1250} = 800 MHz $$
+
+$$ freq = \frac{1}{tCK} = \frac{1}{10^{-12}\times1250} = 800 MHz $$
 But since DDR transfers data on both edges this is doubled.
 
-$$ burst_length = 8 \Rightarrow typical of DDR3 $$
+$$ burst\_length = 8 \Rightarrow \text{typical of DDR3} $$
+
+Alternatively, tracing our steps from [se.py](spec_cpu2006/se.py) to [MemConfig.py](spec_cpu2006/MemConfig.py) and finally to [Options.py](spec_cpu2006/Options.py) we can clearly see that the default value, when not specifying the memory type with the relevant flag, is DDR3_1600_8x8.
 
 Here can be seen the:
 
@@ -342,3 +387,11 @@ To conduct our experiments we fully automate the procedure using a script that c
 
 ## Step 5: Cost Function as a means for Performance Optimization
 
+
+## Sources
+[1] https://www.gem5.org/documentation/general_docs/cpu_models/SimpleCPU
+[2] https://www.gem5.org/documentation/general_docs/cpu_models/O3CPU
+[3] https://www.gem5.org/documentation/general_docs/cpu_models/TraceCPU
+[4] https://www.gem5.org/documentation/general_docs/cpu_models/minor_cpu
+[5] https://en.wikipedia.org/wiki/Double_data_rate
+[6] 
