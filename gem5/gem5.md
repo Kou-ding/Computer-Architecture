@@ -389,9 +389,9 @@ To conduct our experiments we fully automate the procedure using a script that c
 
 
 ## Sources
-[1] https://www.gem5.org/documentation/general_docs/cpu_models/SimpleCPU
-[2] https://www.gem5.org/documentation/general_docs/cpu_models/O3CPU
-[3] https://www.gem5.org/documentation/general_docs/cpu_models/TraceCPU
-[4] https://www.gem5.org/documentation/general_docs/cpu_models/minor_cpu
-[5] https://en.wikipedia.org/wiki/Double_data_rate
+[1] https://www.gem5.org/documentation/general_docs/cpu_models/SimpleCPU  
+[2] https://www.gem5.org/documentation/general_docs/cpu_models/O3CPU  
+[3] https://www.gem5.org/documentation/general_docs/cpu_models/TraceCPU  
+[4] https://www.gem5.org/documentation/general_docs/cpu_models/minor_cpu  
+[5] https://en.wikipedia.org/wiki/Double_data_rate  
 [6] 
