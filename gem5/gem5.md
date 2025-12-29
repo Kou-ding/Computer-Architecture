@@ -215,3 +215,130 @@ The script and .ini file location has to be inside the folder containing all the
 ```bash
 ~/Desktop/gem5/spec_results
 ```
+
+### Benchmark Results
+
+Some basic memory information that can be found on config.ini (or config.json) include:
+
+|Attributes     |  specbzip   |  spechmmer  |  speclibm   |   specmfc   |  specsjeng  |
+|---------------|-------------|-------------|-------------|-------------|-------------|
+|cache_line_size| 64          | 64          | 64          | 64          | 64          |
+|l1.dcache.size | 65536       | 65536       | 65536       | 65536       | 65536       |
+|l1.dcache.assoc| 2           | 2           | 2           | 2           | 2           |
+|l1.icache.size | 32768       | 32768       | 32768       | 32768       | 32768       |
+|l1.icache.assoc| 2           | 2           | 2           | 2           | 2           |
+|l2.cache.size  | 2097152     | 2097152     | 2097152     | 2097152     | 2097152     |
+|l2.cache.size  | 8           | 8           | 8           | 8           | 8           |
+|dram.type      |DDR3_1600_x64|DDR3_1600_x64|DDR3_1600_x64|DDR3_1600_x64|DDR3_1600_x64| 
+
+
+
+$$device\_bus\_width \times devices_per_rank = bus\_bits$$
+$$ 8 \times 8 = 64-bit bus
+tCK = 1250ps
+$$ freq = \frac{1}{tCK} = \frac{1}{10^(-12)1250} = 800 MHz $$
+But since DDR transfers data on both edges this is doubled.
+
+$$ burst_length = 8 \Rightarrow typical of DDR3 $$
+
+Here can be seen the:
+
+- CPI (Cycles Per Instruction)
+- Simulated seconds
+- dcache miss rate
+- icache miss rate 
+- l2 cache miss rate
+- Total Instructions
+
+![res1_seconds](spec_cpu2006/Results_1/res1_seconds.png)
+![res1_cpi](spec_cpu2006/Results_1/res1_cpi.png)
+![res1_dcache](spec_cpu2006/Results_1/res1_dcache.png)
+![res1_icache](spec_cpu2006/Results_1/res1_icache.png)
+![res1_l2cache](spec_cpu2006/Results_1/res1_l2cache.png)
+![res1_insts](spec_cpu2006/Results_1/res1_insts.png)
+
+Comments: ///////////////////////**TO-DO**///////////////////////////////
+
+Afterwards we execute the same automation script adding the flags "--cpu-clock=1GHz", "--cpu-clock=2GHz". It is important to note that up to this point the default cpu-clock value has been 500 ticks $\Rightarrow$ 2GHz.
+
+### CPU Clock 1GHz
+
+| Constant parameters |   Value   |
+| ------------------- | --------- |
+| Instructions        | 100000000 |
+| System Clock        | 1000      |
+| CPU Clock           | 1000      |
+
+![res2_seconds](spec_cpu2006/Results_2/res2_seconds.png)
+![res2_cpi](spec_cpu2006/Results_2/res2_cpi.png)
+![res2_dcache](spec_cpu2006/Results_2/res2_dcache.png)
+![res2_icache](spec_cpu2006/Results_2/res2_icache.png)
+![res2_l2cache](spec_cpu2006/Results_2/res2_l2cache.png)
+
+
+### CPU Clock 4GHz
+
+| Constant parameters |   Value   |
+| ------------------- | --------- |
+| Instructions        | 100000000 |
+| System Clock        | 1000      |
+| CPU Clock           | 250       |
+
+![res3_seconds](spec_cpu2006/Results_3/res3_seconds.png)
+![res3_cpi](spec_cpu2006/Results_3/res3_cpi.png)
+![res3_dcache](spec_cpu2006/Results_3/res3_dcache.png)
+![res3_icache](spec_cpu2006/Results_3/res3_icache.png)
+![res3_l2cache](spec_cpu2006/Results_3/res3_l2cache.png)
+
+Why are there different frequencies?
+When changing the CPU clock speed this only affects the cpu's clock. The global/system clock remains the same. The reason for this split is due to the fact that we don't dont need such a high frequency clock for all procedures. For example the memory bus which inherits the system's frequency is usually run at lower frequencies 1600MHz. This conserves energy by having  
+///////////////////////**TO-DO**///////////////////////////////
+
+What would the cpu frequency be if we added a second cpu?
+///////////////////////**TO-DO**///////////////////////////////
+
+Is there perfect scaling in different clock systems? If not why?
+///////////////////////**TO-DO**///////////////////////////////
+
+Through the stats.txt findings we can confim cpu clock speed that we set:
+
+- system.cpu_clk_domain.clock = 1000
+- system.cpu_clk_domain.clock = 250
+
+$$ T = 250 \times 10^{-12} and T = 1000 \times 10^{-12} $$
+$$ f = \frac{1}{T} = 4GHz and f = \frac{1}{T} = 1GHz $$
+
+
+### Memory type DDR3_2133_x64 (and CPU Clock 4GHz)
+
+![res4_seconds](spec_cpu2006/Results_4/res4_seconds.png)
+![res4_cpi](spec_cpu2006/Results_4/res4_cpi.png)
+![res4_dcache](spec_cpu2006/Results_4/res4_dcache.png)
+![res4_icache](spec_cpu2006/Results_4/res4_icache.png)
+![res4_l2cache](spec_cpu2006/Results_4/res4_l2cache.png)
+![res4_insts](spec_cpu2006/Results_4/res4_insts.png)
+
+Observations:
+///////////////////////**TO-DO**///////////////////////////////
+
+## Step 4: Performance Optimization
+
+At this point we will be tweaking the following values:
+
+- Cache line size
+- L1 Instruction cache size
+- L1 Instruction cache associativity
+- L1 Data cache
+- L1 Data associativity
+- L2 cache size
+- L2 associativity
+
+We start off by setting some restrictions sourcing from a theoretical standpoint:
+
+- L1 cache <= 256KBytes
+- 
+
+To conduct our experiments we fully automate the procedure using a script that combines our previously created scripts.
+
+## Step 5: Cost Function as a means for Performance Optimization
+
