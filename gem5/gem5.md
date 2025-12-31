@@ -1,5 +1,5 @@
 ---
-documentclass: report 
+documentclass: article 
 papersize: a4 
 fontsize: 12pt
 date: \today
@@ -304,7 +304,7 @@ Here can be seen the:
 
 Comments: ///////////////////////**TO-DO**///////////////////////////////
 
-Afterwards we execute the same automation script adding the flags "--cpu-clock=1GHz", "--cpu-clock=2GHz". It is important to note that up to this point the default cpu-clock value has been 500 ticks $\Rightarrow$ 2GHz.
+Afterwards we execute the same automation script adding the flags "--cpu-clock=1GHz", "--cpu-clock=4GHz". It is important to note that up to this point the default cpu-clock value has been 500 ticks $\Rightarrow$ 2GHz.
 
 ### CPU Clock 1GHz
 
@@ -335,17 +335,18 @@ Afterwards we execute the same automation script adding the flags "--cpu-clock=1
 ![res3_icache](spec_cpu2006/Results_3/res3_icache.png)
 ![res3_l2cache](spec_cpu2006/Results_3/res3_l2cache.png)
 
-Why are there different frequencies?
-When changing the CPU clock speed this only affects the cpu's clock. The global/system clock remains the same. The reason for this split is due to the fact that we don't dont need such a high frequency clock for all procedures. For example the memory bus which inherits the system's frequency is usually run at lower frequencies 1600MHz. This conserves energy by having  
+#### Why are there different frequencies?
+
+When changing the CPU clock speed this only affects the cpu's clock. The global/system clock remains the same. The reason for this split is due to the fact that we don't need such a high frequency clock for all procedures. For example the memory bus which inherits the system's frequency is usually run at lower frequencies 1600MHz. This conserves energy by having part of the circuit run on a lower frequency and subsequently reduces the thermal impact which could cause throttling. 
 ///////////////////////**TO-DO**///////////////////////////////
 
-What would the cpu frequency be if we added a second cpu?
-///////////////////////**TO-DO**///////////////////////////////
+#### What would the cpu frequency be if we added a second cpu?
+All cores would run at the same frequency.
 
-Is there perfect scaling in different clock systems? If not why?
-///////////////////////**TO-DO**///////////////////////////////
+#### Is there perfect scaling in different clock systems? If not why?
+No, we don't observe perfect scaling through our benchmarks. Cache misses values remain almost constant throughout all benchmarks 
 
-Through the stats.txt findings we can confim cpu clock speed that we set:
+Through the stats.txt findings we can confirm cpu clock speed that we set:
 
 - system.cpu_clk_domain.clock = 1000
 - system.cpu_clk_domain.clock = 250
@@ -356,15 +357,20 @@ $$ f = \frac{1}{T} = 4GHz and f = \frac{1}{T} = 1GHz $$
 
 ### Memory type DDR3_2133_x64 (and CPU Clock 4GHz)
 
+| Constant parameters |   Value   |
+| ------------------- | --------- |
+| Instructions        | 100000000 |
+| System Clock        | 1000      |
+| CPU Clock           | 250       |
+
 ![res4_seconds](spec_cpu2006/Results_4/res4_seconds.png)
 ![res4_cpi](spec_cpu2006/Results_4/res4_cpi.png)
 ![res4_dcache](spec_cpu2006/Results_4/res4_dcache.png)
 ![res4_icache](spec_cpu2006/Results_4/res4_icache.png)
 ![res4_l2cache](spec_cpu2006/Results_4/res4_l2cache.png)
-![res4_insts](spec_cpu2006/Results_4/res4_insts.png)
 
 Observations:
-///////////////////////**TO-DO**///////////////////////////////
+The simulation seconds have been slightly lowered though it is not statistically significant  
 
 ## Step 4: Performance Optimization
 
@@ -373,7 +379,7 @@ At this point we will be tweaking the following values:
 - Cache line size
 - L1 Instruction cache size
 - L1 Instruction cache associativity
-- L1 Data cache
+- L1 Data cache size
 - L1 Data associativity
 - L2 cache size
 - L2 associativity
@@ -394,4 +400,5 @@ To conduct our experiments we fully automate the procedure using a script that c
 [3] https://www.gem5.org/documentation/general_docs/cpu_models/TraceCPU  
 [4] https://www.gem5.org/documentation/general_docs/cpu_models/minor_cpu  
 [5] https://en.wikipedia.org/wiki/Double_data_rate  
-[6] 
+[6] https://www.linkedin.com/pulse/memory-hierarchies-how-cache-design-impacts-increasing-pradip-mudi-drspc  
+[7] 
