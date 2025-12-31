@@ -402,4 +402,5 @@ To conduct our experiments we fully automate the procedure using a script that c
 [4] https://www.gem5.org/documentation/general_docs/cpu_models/minor_cpu  
 [5] https://en.wikipedia.org/wiki/Double_data_rate  
 [6] https://www.linkedin.com/pulse/memory-hierarchies-how-cache-design-impacts-increasing-pradip-mudi-drspc  
-[7] 
+[7] https://medium.com/@mike.anderson007/the-cache-clash-l1-l2-and-l3-in-cpus-2a21d61a0c6b  
+[8] 
