@@ -338,13 +338,14 @@ Afterwards we execute the same automation script adding the flags "--cpu-clock=1
 #### Why are there different frequencies?
 
 When changing the CPU clock speed this only affects the cpu's clock. The global/system clock remains the same. The reason for this split is due to the fact that we don't need such a high frequency clock for all procedures. For example the memory bus which inherits the system's frequency is usually run at lower frequencies 1600MHz. This conserves energy by having part of the circuit run on a lower frequency and subsequently reduces the thermal impact which could cause throttling. 
-///////////////////////**TO-DO**///////////////////////////////
 
 #### What would the cpu frequency be if we added a second cpu?
+
 All cores would run at the same frequency.
 
 #### Is there perfect scaling in different clock systems? If not why?
-No, we don't observe perfect scaling through our benchmarks. Cache misses values remain almost constant throughout all benchmarks 
+
+No, we don't observe perfect scaling through our benchmarks. Cache misses values remain almost constant when comparing the 1GHz with the 4GHz CPUs, throughout all benchmarks. This means that the program will spend more cycles on a miss negatively affecting CPI. Additionally the system clock operate at the same clock which doesn't allow for perfect scaling along with the previous factors.
 
 Through the stats.txt findings we can confirm cpu clock speed that we set:
 
@@ -370,7 +371,7 @@ $$ f = \frac{1}{T} = 4GHz and f = \frac{1}{T} = 1GHz $$
 ![res4_l2cache](spec_cpu2006/Results_4/res4_l2cache.png)
 
 Observations:
-The simulation seconds have been slightly lowered though it is not statistically significant  
+The simulation seconds have been slightly lowered though it is not statistically significant  ////// To do /////////
 
 ## Step 4: Performance Optimization
 
