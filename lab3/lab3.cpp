@@ -1,11 +1,3 @@
-/*******************************************************************************
-Description:
-    Wide Memory Access Example using ap_uint<Width> datatype
-    Description: This is vector addition example to demonstrate Wide Memory
-    access of 512bit Datawidth using ap_uint<> datatype which is defined inside
-    'ap_int.h' file.
-*******************************************************************************/
-
 //Including to use ap_uint<> datatype
 #include <ap_int.h>
 #include <stdio.h>
@@ -13,26 +5,28 @@ Description:
 
 #define T1 32
 #define T2 96
+
+// Real matrix dimensions
 #define HEIGHT 128
 #define WIDTH 128
 
-#define BUFFER_SIZE 64
-#define DATAWIDTH 512
-#define VECTOR_SIZE (DATAWIDTH / 32) // vector size is 16 (512/32 = 16)
+#define BUFFER_SIZE 64 // number of 512bit integers in one buffer
+#define DATAWIDTH 512 // bits in one 512bit integer
+#define VECTOR_SIZE (DATAWIDTH / 32) // number of 32bit integers in one 512bit (512/32 = 16)
 typedef ap_uint<DATAWIDTH> uint512_dt;
 
 // TRIPCOUNT identifier
 const unsigned int c_chunk_sz = BUFFER_SIZE;
 const unsigned int c_size     = VECTOR_SIZE;
 
-int clipper(int element){
+ap_uint<32> clipper(ap_int<64> element){
     if (element>255){
         element=255;
     }
     else if (element<0){
         element=0;
     }
-    return element;
+    return (ap_int<32>)element;
 }
 // Refactor it to work with the vectorized code
 int is_interior(int idx) {
@@ -41,13 +35,18 @@ int is_interior(int idx) {
     return (row > 0 && row < HEIGHT-1 && col > 0 && col < WIDTH-1);
 }
 
+ap_int<64> sharpen(ap_uint<32> mid, ap_uint<32> right, ap_uint<32> left, ap_uint<32> up, ap_uint<32> down){
+    ap_int<64> sharpPixel = 5 * mid - up - down - left - right;
+    return sharpPixel;
+}
+
 extern "C"
 {
     void imageDiffPosterize(
         const uint512_dt *A, // Read-Only Vector 1
         const uint512_dt *B, // Read-Only Vector 2
         uint512_dt *C,       // Intermediate Output Result
-        uint521_dt *C_filt,  // Output Result
+        uint512_dt *C_filt,  // Output Result
         int size             // Size in integer
     )
     {
@@ -64,13 +63,7 @@ extern "C"
 
         uint512_dt A_local[BUFFER_SIZE]; // Local memory to store input vectors
         uint512_dt B_local[BUFFER_SIZE];
-        uint512_dt C_local[BUFFER_SIZE]; // Local Memory to store results
-        uint512_dt C_filt_local[BUFFER_SIZE];
-
-        // Filtering buffers
-        uint512_dt mid[BUFFER_SIZE + 2];
-        uint512_dt up[BUFFER_SIZE + 2];
-        uint512_dt down[BUFFER_SIZE + 2];
+        uint512_dt C_local[BUFFER_SIZE+((WIDTH/VECTOR_SIZE)*2)]; // Local Memory to store an extended C buffer
 
         // Input vector size for integer vectors. However kernel is directly
         // accessing 512bit data (total 16 elements). So total number of read
@@ -79,9 +72,11 @@ extern "C"
         // Eg. size = 17 integers -> ((17-1)/16)+1=2 -> 2 memory access needed
         int size_in16 = (size - 1) / VECTOR_SIZE + 1;
 
-        //Per iteration of this loop perform BUFFER_SIZE vector addition
+        // Deal with 64x512bit buffers at a time 
+        // (the last chunk might effectively create a smaller buffer)
+        // (the buffer will still have 64 locations but j will be limited to how many 512 numbers are left)
         for (int i = 0; i < size_in16; i += BUFFER_SIZE) {
-//#pragma HLS PIPELINE
+// #pragma HLS PIPELINE
 #pragma HLS DATAFLOW
 #pragma HLS stream variable = A_local depth = 64
 #pragma HLS stream variable = B_local depth = 64
@@ -106,15 +101,17 @@ extern "C"
 			for (int j = 0; j < chunk_size; j++) {
 #pragma HLS pipeline
 #pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
-                uint512_dt tmpA = A_local[j];
-                uint512_dt tmpB = B_local[j];
+                uint512_dt tmpA_512 = A_local[j];
+                uint512_dt tmpB_512 = B_local[j];
 
                 uint512_dt tmpC = 0;
 
                 for (int vector = 0; vector < VECTOR_SIZE; vector++) {
 #pragma HLS UNROLL
+                    ap_uint<32> tmpA_32 = tmpA_512.range(32 * (vector + 1) - 1,vector * 32);
+                    ap_uint<32> tmpB_32 = tmpB_512.range(32 * (vector + 1) - 1,vector * 32);
                     // image difference
-                    ap_uint<32> D = tmpA.range(32(vector + 1) - 1,vector32) - tmpB.range(32(vector + 1) - 1,vector32);
+                    ap_int<64> D = tmpA_32 - tmpB_32;
                     if(D<0) D=-D;
                     if (D < T1) {
                         tmpC.range(32 * (vector + 1) - 1, vector * 32) = 0;
@@ -124,17 +121,12 @@ extern "C"
                         tmpC.range(32 * (vector + 1) - 1, vector * 32) = 255;
                     }
                 }
-
                 C[i + j] = tmpC;
 			}
         }
         // Begin loop anew after forming C matrix    
         for (int i = 0; i < size_in16; i += BUFFER_SIZE) {
-//#pragma HLS PIPELINE
 #pragma HLS DATAFLOW
-#pragma HLS stream variable = A_local depth = 64
-#pragma HLS stream variable = B_local depth = 64
-
             int chunk_size = BUFFER_SIZE;
 
             //boundary checks
@@ -142,72 +134,81 @@ extern "C"
                 chunk_size = size_in16 - i;
 
             C_read:
-            for (int j = 0; j < chunk_size + 2; j++) {
-#pragma HLS LOOP_TRIPCOUNT min = c_size max = c_size
-#pragma HLS PIPELINE II = 1
-                // // select a specific 512 block which contains the integers we are after
-                // uint512_dt tmpMid = mid[j];
-				// uint512_dt tmpUp = up[j];
-                // uint512_dt tmpDown = down[j];
-                
-                for (int vector = 0; vector < VECTOR_SIZE; vector++) {
-#pragma HLS UNROLL
-
-                    int idx = i + j ; // absolute index in new matrix consisting 512 bit integers
-                    int ichi = (idx)*VECTOR_SIZE + vector; // absolute index in the HEIGHTxWIDTH matrix
-
-                    // Start the buffers from 1 element to the left
-                    if (ichi-1 < 0 || ichi-1 >= size ) {
-                        mid[j].range(32 * (vector + 1) - 1, vector * 32) = up[j].range(32 * (vector + 1) - 1, vector * 32) = down[j].range(32 * (vector + 1) - 1, vector * 32) = 0;
-                    } else {
-
-                        mid[j].range(32 * (vector + 1) - 1, vector * 32)  = C[idx].range(32 * (vector + 1) - 1, vector * 32);
-                        // if(idx-1+vector >= WIDTH){
-                        //     up[j].range(32 * (vector + 1) - 1, vector * 32) = C[idx-1 - WIDTH].range(32 * (vector + 1) - 1, vector * 32);
-                        // }else{
-
-                        // }
-                        up[j].range(32 * (vector + 1) - 1, vector * 32)   = (ichi-WIDTH >= 0) ? C[idx - ((WIDTH-1)/VECTOR_SIZE)].range(32 * (vector + 1) - 1, vector * 32) : 0;
-                        down[j].range(32 * (vector + 1) - 1, vector * 32) = (ichi+WIDTH < size)   ? C[idx + ((WIDTH-1)/VECTOR_SIZE)].range(32 * (vector + 1) - 1, vector * 32) : 0;
-                    }
+            // Each C_local buffer has 8 real rows of 32bit integers
+            // plus (WIDTH/VECTOR_SIZE) 512bit elements in the front and back of the buffer
+            for (int j = 0; j < chunk_size+((WIDTH/VECTOR_SIZE)*2); j++) {
+#pragma HLS pipeline
+#pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
+                // check if I am within the first and last 512bit element of the C matrix
+                if(i+j-(WIDTH/VECTOR_SIZE)>=0 && i+j-(WIDTH/VECTOR_SIZE)<=size_in16){
+                    C_local[j] = C[i + j - (WIDTH/VECTOR_SIZE)]; // Load one 512bit from the right and left edge
+                }else{
+                    C_local[j] = 0; // Handle elements outside C matrix
                 }
             }
-            filtering:
+
+            // Traverse the normal chunksize
             for (int j = 0; j < chunk_size; j++) {
 #pragma HLS pipeline
 #pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
+                // The first and last (WIDTH/VECTOR_SIZE) elements are for the computation of the main chunk_size elements
+                // Their up down left and right that might be missing from the main chunk
+                int real_j=j+(WIDTH/VECTOR_SIZE);
 
-                int idx = i + j ; // absolute index in new matrix consisting 512 bit integers
-                int ichi = (idx)*VECTOR_SIZE + vector; // absolute index in the HEIGHTxWIDTH matrix
+                // Local C temporary variables
+                uint512_dt C_local_mid = C_local[real_j];
+                uint512_dt C_local_left = C_local[real_j-1];
+                uint512_dt C_local_right = C_local[real_j+1];
+                uint512_dt C_local_up = C_local[real_j-(WIDTH/VECTOR_SIZE)];
+                uint512_dt C_local_down = C_local[real_j+(WIDTH/VECTOR_SIZE)];
+
+                uint512_dt tmpC_filt = 0;
 
                 for (int vector = 0; vector < VECTOR_SIZE; vector++) {
 #pragma HLS UNROLL
-                    if (!is_interior(ichi)) {
-                        // Border output pixel: unchanged
-                        C_filt_local[j].range(32 * (vector + 1) - 1, vector * 32) = clipper(mid[j].range(32 * (vector + 1) - 1, vector * 32));
-                    } else {
-                        // Interior output pixel: full 3x3 available from buffers, including border values.
-                        //
-                        // 3x3 window:
-                        // up:   up[k-1]   up[k]   up[k+1]
-                        // mid:  mid[k-1]  mid[k]  mid[k+1]
-                        // down: down[k-1] down[k] down[k+1]
-                        //
-                        // Sharpen kernel (as in your lab):
-                        //  0 -1  0
-                        // -1  5 -1
-                        //  0  -1 0
-                        int center = mid[j].range(32 * (vector + 1) - 1, vector * 32);
-                        int up_c   = up[j].range(32 * (vector + 1) - 1, vector * 32);
-                        int down_c = down[j].range(32 * (vector + 1) - 1, vector * 32);
-                        int left_c = mid[j].range(32 * (vector-1 + 1) - 1, vector * 32);
-                        int right_c= mid[j].range(32 * (vector+1 + 1) - 1, vector * 32);
+                    // 512bit integer index on the i,j matrix BUFFERSIZE*(number of buffers that need to be created to reach the total number of integers inside the HEIGHT*WIDTH matrix)
+                    int idx = i + j;
+                    // 32bit integer index on the HEIGHT*WIDTH matrix
+                    int ichi = (idx)*VECTOR_SIZE + vector; 
 
-                        int val = 5 * center - up_c - down_c - left_c - right_c;
-                        C_filt_local[j].range(32 * (vector + 1) - 1, vector * 32) = clipper(val);
-                    }
-                    C_filt[i+j] = C_filt_local[j];
-                }    
+                    // Temporary variables for mid, up, down, left, right
+                    ap_uint<32> tmpMid = 0;
+                    ap_uint<32> tmpUp = 0;
+                    ap_uint<32> tmpDown = 0;
+                    ap_uint<32> tmpLeft = 0;
+                    ap_uint<32> tmpRight = 0;
+
+                    // Verify that it is an inside element
+                    if(is_interior(ichi)){
+                        tmpMid = C_local_mid.range(32 * (vector + 1) - 1, vector * 32);
+
+                        tmpUp = C_local_up.range(32 * (vector + 1) - 1, vector * 32);
+
+                        tmpDown = C_local_down.range(32 * (vector + 1) - 1, vector * 32);
+
+                        // Go to the previous 512bit to find the left element
+                        if(vector==0){
+                            tmpLeft = C_local_left.range(511, 480);
+                            tmpRight = C_local_mid.range(32 * ((vector+1)+1) - 1, (vector+1) * 32);
+                        // Go to the next 512bit to find the left element
+                        }else if(vector==VECTOR_SIZE-1){
+                            tmpRight = C_local_right.range(31, 0);
+                            tmpLeft = C_local_mid.range(32 * ((vector-1)+1) - 1, (vector-1) * 32);
+                        // Remain within your 512bit element
+                        }else{
+                            tmpRight = C_local_mid.range(32 * ((vector+1)+1) - 1, (vector+1) * 32);
+                            tmpLeft = C_local_mid.range(32 * ((vector-1)+1) - 1, (vector-1) * 32);
+                        }
+                        ap_int<64> sharpPixel = sharpen(tmpMid, tmpRight, tmpLeft, tmpUp, tmpDown);
+                        ap_uint<32> clipped_sharpPixel = clipper(sharpPixel);
+                        tmpC_filt.range(32 * (vector + 1) - 1, vector * 32) = clipped_sharpPixel; 
+                    }else{
+                        tmpMid = C_local[real_j].range(32 * (vector + 1) - 1, vector * 32);
+                        ap_uint<32> clipped_sharpPixel = clipper(tmpMid);
+                        tmpC_filt.range(32 * (vector + 1) - 1, vector * 32) = clipped_sharpPixel;
+                    }                       
+                }
+                C_filt[i+j] = tmpC_filt;
             }
         }
     }

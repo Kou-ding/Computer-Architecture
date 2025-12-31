@@ -2,6 +2,10 @@
 #include "event_timer.hpp"
 #include <vector>
 
+#include <algorithm>
+#include <cstdlib> // For rand() and srand()
+#include <cstdio>  // For printf()
+
 // DATA_SIZE should be multiple of 16 as Kernel Code is using int16 vector
 // datatype
 // to read the operands from Global Memory. So every read/write to global memory
@@ -13,7 +17,7 @@
 #define T1 32
 #define T2 96
 
-int clipper(int element){
+int sw_clipper(int element){
     if (element>255){
         element=255;
     }
@@ -22,13 +26,11 @@ int clipper(int element){
     }
     return element;
 }
-// Kernel Function - HW
-void imageDiffPosterize(unsigned int* A, unsigned int* B, unsigned int* C, unsigned int* C_filt, int size);
 
 // SW
 void sw_ref(unsigned int *A, unsigned int *B, unsigned int *C_SW, unsigned int *C_SW_filt){
 
-    unsigned long int D;
+    int D;
     unsigned int S[(WIDTH-2)*(HEIGHT-2)]={0};
     int F[3][3] = {0, -1, 0, -1, 5, -1, 0, -1, 0};
 
@@ -60,9 +62,9 @@ void sw_ref(unsigned int *A, unsigned int *B, unsigned int *C_SW, unsigned int *
     for (int i = 0; i < HEIGHT; i++) {
         for (int j = 0; j < WIDTH; j++) {
             if(i>=1 && i<=HEIGHT-2 && j>=1 && j<=WIDTH-2){
-                C_SW_filt[i*WIDTH+j]=clipper(S[(i-1)*(WIDTH-2)+(j-1)]);
+                C_SW_filt[i*WIDTH+j]=sw_clipper(S[(i-1)*(WIDTH-2)+(j-1)]);
             }else{
-                C_SW_filt[i*WIDTH+j]=clipper(C_SW[i*WIDTH+j]);
+                C_SW_filt[i*WIDTH+j]=sw_clipper(C_SW[i*WIDTH+j]);
             }
         }
     }
@@ -111,7 +113,7 @@ int main(int argc, char** argv) {
     cl_int err;
     cl::CommandQueue q;
     cl::Context context;
-    cl::Kernel krnl_vector_add;
+    cl::Kernel krnl_imageDiffPosterize;
     auto devices = xcl::get_xil_devices();
     et.finish();
 
@@ -146,10 +148,8 @@ int main(int argc, char** argv) {
 
     et.add("Allocate Buffer in Global Memory");
     // Allocate Buffer in Global Memory
-    OCL_CHECK(err, cl::Buffer buffer_A(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, vector_size_bytes,
-    source_A.data(), &err));
-    OCL_CHECK(err, cl::Buffer buffer_B(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, vector_size_bytes,
-    source_B.data(), &err));
+    OCL_CHECK(err, cl::Buffer buffer_A(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, vector_size_bytes, source_A.data(), &err));
+    OCL_CHECK(err, cl::Buffer buffer_B(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, vector_size_bytes, source_B.data(), &err));
     OCL_CHECK(err, cl::Buffer buffer_C(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, vector_size_bytes, source_hw_C.data(), &err));
     OCL_CHECK(err, cl::Buffer buffer_C_filt(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, vector_size_bytes, source_hw_C_filt.data(), &err));
     et.finish();
