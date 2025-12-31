@@ -8,14 +8,14 @@ GEM5_BIN="./build/ARM/gem5.opt"
 CONFIG="configs/example/se.py"
 BENCHMARK="spec_cpu2006/470.lbm/src/speclibm"
 BENCH_ARGS="20 spec_cpu2006/470.lbm/data/lbm.in 0 1 spec_cpu2006/470.lbm/data/100_100_130_cf_a.of"
-MAX_INSTS="100000000"
+MAX_INSTS="10000000"
 
 # Parameter ranges
 CACHELINE_SIZES=(32 64 128)
 L1I_SIZES=(16kB 32kB 64kB 128kB)
-L1I_ASSOCS=(2 4 8)
+L1I_ASSOCS=(2 4)
 L1D_SIZES=(16kB 32kB 64kB 128kB)
-L1D_ASSOCS=(2 4 8)
+L1D_ASSOCS=(2 4)
 L2_SIZES=(256kB 512kB 1MB 2MB)
 L2_ASSOCS=(4 8)
 
@@ -36,7 +36,7 @@ for cacheline in "${CACHELINE_SIZES[@]}"; do
             for l2_assoc in "${L2_ASSOCS[@]}"; do
               
               # Create unique directory name for this configuration
-              output_dir="spec_results/speclibm_cl${cacheline}_l1i${l1i_size}_l1ia${l1i_assoc}_l1d${l1d_size}_l1da${l1d_assoc}_l2${l2_size}_l2a${l2_assoc}"
+              output_dir="spec_results_cache/speclibm_cl${cacheline}_l1i${l1i_size}_l1ia${l1i_assoc}_l1d${l1d_size}_l1da${l1d_assoc}_l2${l2_size}_l2a${l2_assoc}"
               
               # Increment counter
               ((sim_count++))

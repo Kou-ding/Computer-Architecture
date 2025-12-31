@@ -4,7 +4,7 @@
 # Extracts performance metrics from stats.txt files and generates CSV
 
 OUTPUT_CSV="gem5_results_summary.csv"
-RESULTS_DIR="spec_results"
+RESULTS_DIR="spec_results_cache"
 
 echo "Parsing gem5 simulation results..."
 echo ""
