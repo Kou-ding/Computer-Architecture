@@ -57,47 +57,55 @@ Dataflow enables parallelization through pipelining but on a task level which li
 
 ## Kernels & Compute Units
 
-| Kernel Execution   | lab2  | lab3  |
-| ------------------ | ----- | ----- | 
-| Enqueues           | 1     | 1     | 
-| Total Time (ms)    | 0.513 | 0.042 |
-| Min Time (ms)      | 0.513 | 0.042 |
-| Avg Time (ms)      | 0.513 | 0.042 |
-| Max Time (ms)      | 0.513 | 0.042 |
+| Kernel Execution   | lab2 64*64 | lab3 64*64 | lab3 128*128 | 
+| ------------------ | ---------- | ---------- | ------------ |
+| Enqueues           | 1          | 0.013      | 1            |
+| Total Time (ms)    | 0.513      | 0.013      | 0.042        |
+| Min Time (ms)      | 0.513      | 0.013      | 0.042        |
+| Avg Time (ms)      | 0.513      | 0.013      | 0.042        |
+| Max Time (ms)      | 0.513      | 0.013      | 0.042        |
 
 ## Kernel Data Transfers
 
-| Top Kernel Data Transfer   |  lab2   | lab3     |
-| -------------------------- | ------- | -------- | 
-| Number of Transfers        | 15079   | 1329     | 
-| Avg Bytes per Transfer     | 8.000   | 110.000  |
-| Transfer Efficiency %      | 0.196   | 2.691    |
-| Total Data Transfer (MB)   | 0.121   | 0.146    |
-| Total Write (MB)           | 0.033   | 0.066    |
-| Total Read (MB)            | 0.088   | 0.081    |
-| Total Transfer Rate (MB/s) | 872.740 | 12063.900|
+| Top Kernel Data Transfer   | lab2 64*64 | lab3 64*64 | lab3 128*128 | 
+| -------------------------- | ---------- | ---------- | ------------ |
+| Number of Transfers        | 15079      | 297        | 1329         | 
+| Avg Bytes per Transfer     | 8.000      | 115.000    | 110.000      |
+| Transfer Efficiency %      | 0.196      | 2.825      | 2.691        |
+| Total Data Transfer (MB)   | 0.121      | 0.034      | 0.146        |
+| Total Write (MB)           | 0.033      | 0.016      | 0.066        |
+| Total Read (MB)            | 0.088      | 0.018      | 0.081        |
+| Total Transfer Rate (MB/s) | 872.740    | 12002.800  | 12063.900    |
 
 ## Host Data Transfer 
 
-| Host Transfer             | lab2   | lab3    |
-| ------------------------- | ------ | ------- |
-| Number of READs           | 1      | 1       |
-| Number of WRITEs          | 2      | 2       |
-| READ Transfer Rate (MB/s) | 0.761  | 3.118   |
-| WRITE Transfer Rate (MB/s)| 1.185  | 5.253   |
-| READ Average Size (kB)    | 32.768 | 131.072 |
-| WRITE Average Size (kB)   | 40.960 | 163.840 |
+| Host Transfer             | lab2 64*64 | lab3 64*64 | lab3 128*128 | 
+| ------------------------- | ---------- | ---------- | ------------ |
+| Number of READs           | 1          | 1          | 1            |
+| Number of WRITEs          | 2          | 2          | 2            |
+| READ Transfer Rate (MB/s) | 0.761      | 0.794      | 3.118        |
+| WRITE Transfer Rate (MB/s)| 1.185      | 1.211      | 5.253        |
+| READ Average Size (kB)    | 32.768     | 32.768     | 131.072      |
+| WRITE Average Size (kB)   | 40.960     | 40.960     | 163.840      |
 
 ### Comments:
-Using the vectorization method we achieved an acceleration of **1221%**. Note that the performance increase is even higher due to the fact that this implementation uses **128\*128** matrices and the lab2's used **64\*64** matrices. Also writing and reading, of the kernel/host to and from global memory, is evidently a lot faster this time thanks to the more compact way the data is transmitted.
+Using the vectorization method we achieved an acceleration of **3946.15%**. Thanks to the implementation's performance increase we are able to use $128 \times 128$ matrices while remaining significantly faster than the non-vectorized $64 \times 64$ version ( still **1221%** acceleration). Writing and reading, of the kernel/host to and from global memory, is evidently a lot faster this time thanks to the more compact way the data is transmitted. Also, 
 
-# Screenshots
+# Screenshots 64*64
 
-![kernel-compute-units](media/kernel-compute-units.png)
+![kernel-compute-units](media/kernel-compute-units-64.png)
 
-![kernel-data](media/kernel-data.png)
+![kernel-data](media/kernel-data-64.png)
 
-![host-data](media/host-data.png)
+![host-data](media/host-data-64.png)
+
+# Screenshots 128*128
+
+![kernel-compute-units](media/kernel-compute-units-128.png)
+
+![kernel-data](media/kernel-data-128.png)
+
+![host-data](media/host-data-128.png)
 
 <!-- SUMMARY -->
 # Zip Contents
