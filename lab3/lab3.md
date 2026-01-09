@@ -22,6 +22,8 @@ Lab3 improves on Lab2 by:
 - Vectorizing the input/output decreasing the memory accesses
 - Storing the input/output to different banks achieving parallelized memory access 
 
+\newpage
+
 # Application changes
 
 To be able to vectorize the pixels correctly we utilize 512 bit unsigned integers which contains 16 integers each. 
@@ -53,59 +55,87 @@ There are two new pragmas used on this lab:
 ```
 Dataflow enables parallelization through pipelining but on a task level which lies in contrast with *PIPELINE* which works on an instruction level. On the other side stream is applied on an array, for example variable A from the code sample, and is used when that array is consumed or produced in a sequential manner. Then a FIFO loop is used instead of RAM achieving more efficient communication. 
 
+\newpage
+
 # Data comparison
 
 ## Kernels & Compute Units
 
-| Kernel Execution   | lab2 64*64 | lab3 64*64 | lab3 128*128 | 
-| ------------------ | ---------- | ---------- | ------------ |
-| Enqueues           | 1          | 0.013      | 1            |
-| Total Time (ms)    | 0.513      | 0.013      | 0.042        |
-| Min Time (ms)      | 0.513      | 0.013      | 0.042        |
-| Avg Time (ms)      | 0.513      | 0.013      | 0.042        |
-| Max Time (ms)      | 0.513      | 0.013      | 0.042        |
+| Kernel Execution   | lab2 64*64 | lab3 64*64 | lab3 64*64 4banks | lab3 128*128 | 
+| ------------------ | ---------- | ---------- | ----------------- | ------------ |
+| Enqueues           | 1          | 0.013      | 1                 | 1            |
+| Total Time (ms)    | 0.513      | 0.013      | 0.014             | 0.042        |
+| Min Time (ms)      | 0.513      | 0.013      | 0.014             | 0.042        |
+| Avg Time (ms)      | 0.513      | 0.013      | 0.014             | 0.042        |
+| Max Time (ms)      | 0.513      | 0.013      | 0.014             | 0.042        |
 
 ## Kernel Data Transfers
 
-| Top Kernel Data Transfer   | lab2 64*64 | lab3 64*64 | lab3 128*128 | 
-| -------------------------- | ---------- | ---------- | ------------ |
-| Number of Transfers        | 15079      | 297        | 1329         | 
-| Avg Bytes per Transfer     | 8.000      | 115.000    | 110.000      |
-| Transfer Efficiency %      | 0.196      | 2.825      | 2.691        |
-| Total Data Transfer (MB)   | 0.121      | 0.034      | 0.146        |
-| Total Write (MB)           | 0.033      | 0.016      | 0.066        |
-| Total Read (MB)            | 0.088      | 0.018      | 0.081        |
-| Total Transfer Rate (MB/s) | 872.740    | 12002.800  | 12063.900    |
+| Top Kernel Data Transfer   | lab2 64*64 | lab3 64*64 | lab3 64*64 4banks | lab3 128*128 | 
+| -------------------------- | ---------- | ---------- | ----------------- | ------------ |
+| Number of Transfers        | 15079      | 297        | 297               | 1329         | 
+| Avg Bytes per Transfer     | 8.000      | 115.000    | 115.000           | 110.000      |
+| Transfer Efficiency %      | 0.196      | 2.825      | 2.825             | 2.691        |
+| Total Data Transfer (MB)   | 0.121      | 0.034      | 0.034             | 0.146        |
+| Total Write (MB)           | 0.033      | 0.016      | 0.016             | 0.066        |
+| Total Read (MB)            | 0.088      | 0.018      | 0.018             | 0.081        |
+| Total Transfer Rate (MB/s) | 872.740    | 12002.800  | 12985.400         | 12063.900    |
 
 ## Host Data Transfer 
 
-| Host Transfer             | lab2 64*64 | lab3 64*64 | lab3 128*128 | 
-| ------------------------- | ---------- | ---------- | ------------ |
-| Number of READs           | 1          | 1          | 1            |
-| Number of WRITEs          | 2          | 2          | 2            |
-| READ Transfer Rate (MB/s) | 0.761      | 0.794      | 3.118        |
-| WRITE Transfer Rate (MB/s)| 1.185      | 1.211      | 5.253        |
-| READ Average Size (kB)    | 32.768     | 32.768     | 131.072      |
-| WRITE Average Size (kB)   | 40.960     | 40.960     | 163.840      |
+| Host Transfer             | lab2 64*64 | lab3 64*64 | lab3 64*64 4banks | lab3 128*128 | 
+| ------------------------- | ---------- | ---------- | ----------------- | ------------ |
+| Number of READs           | 1          | 1          | 1                 | 1            |
+| Number of WRITEs          | 2          | 2          | 2                 | 2            |
+| READ Transfer Rate (MB/s) | 0.761      | 0.794      | 0.750             | 3.118        |
+| WRITE Transfer Rate (MB/s)| 1.185      | 1.211      | 1.327             | 5.253        |
+| READ Average Size (kB)    | 32.768     | 32.768     | 32.768            | 131.072      |
+| WRITE Average Size (kB)   | 40.960     | 40.960     | 40.960            | 163.840      |
 
-### Comments:
-Using the vectorization method we achieved an acceleration of **3946.15%**. Thanks to the implementation's performance increase we are able to use $128 \times 128$ matrices while remaining significantly faster than the non-vectorized $64 \times 64$ version ( still **1221%** acceleration). Writing and reading, of the kernel/host to and from global memory, is evidently a lot faster this time thanks to the more compact way the data is transmitted. Also, 
+## Comments:
+Using the vectorization method we achieved an acceleration of **3946.15%**. Thanks to the implementation's performance increase we are able to use $128 \times 128$ matrices while remaining significantly faster than the non-vectorized $64 \times 64$ version ( still **1221%** acceleration). Writing and reading, of the kernel/host to and from global memory, is evidently a lot faster this time thanks to the more compact way the data is transmitted.
 
-# Screenshots 64*64
+Applying further optimizations, the 4bank setup manages to quicken writing and reading on the kernel side (kernel $\rightleftarrows$ global memory) by ~1GB/s, thanks to the parallelization of memory accesses, although on the host side we notice faster writes and slower reads from and to global memory. The overall 0.001ms rise in execution time could be attributed to the emerging topology where different memory banks might exist in different SLR regions making meeting timing harder.
 
-![kernel-compute-units](media/kernel-compute-units-64.png)
+\newpage
 
-![kernel-data](media/kernel-data-64.png)
+# Screenshots 64*64 - 1 bank
 
-![host-data](media/host-data-64.png)
+One Bank Structure:
 
-# Screenshots 128*128
+![bank-structure-1b](media/1bank.png)
 
-![kernel-compute-units](media/kernel-compute-units-128.png)
+![kernel-compute-units-64*64-1b](media/kernel-compute-units-64.png)
 
-![kernel-data](media/kernel-data-128.png)
+![kernel-data-64*64-1b](media/kernel-data-64.png)
 
-![host-data](media/host-data-128.png)
+![host-data-64*64-1b](media/host-data-64.png)
+
+\newpage
+
+# Screenshots 64*64 - 4 banks
+
+Four Banks Structure:
+
+![bank-structure-4b-64*64-4b](media/4banks.png)
+
+![kernel-compute-units-64*64-4b](media/kernel-compute-units-64-4b.png)
+
+![kernel-data-64*64-4b](media/kernel-data-64-4b.png)
+
+![host-data-64*64-4b](media/host-data-64-4b.png)
+
+\newpage 
+
+# Screenshots 128*128 - 1 bank
+
+![kernel-compute-units-128*128-1b](media/kernel-compute-units-128.png)
+
+![kernel-data-128*128-1b](media/kernel-data-128.png)
+
+![host-data-128*128-1b](media/host-data-128.png)
+
+\newpage
 
 <!-- SUMMARY -->
 # Zip Contents
