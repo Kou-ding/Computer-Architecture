@@ -1,21 +1,11 @@
 ---
-documentclass: article 
-papersize: a4 
-fontsize: 12pt
-date: \today
-lang: en
 title: Αρχιτεκτονική Προηγμένων Υπολογιστών και Επιταχυντών Gem5 Report
 author: Παπαδάκης Κωνσταντίνος Φώτιος - **ΑΕΜ** 10371
-toc: true # table of contents
-numbersections: true
-geometry: margin=2cm # modify left/right paper margins
-mainfont: "Liberation Serif"
 ---
-
 
 # Gem5 Assignment
 
-![gem5-logo](/gem5/media/gem5-logo.png)
+![gem5-logo](media/gem5-logo.png)
 
 In this assignment we are going to be System call Emulation (SE) where we focus on running a specific program in contrast with Full System (FS) mode where we emulate an entire operating system.
 
@@ -388,12 +378,90 @@ At this point we will be tweaking the following values:
 We start off by setting some restrictions sourcing from a theoretical standpoint:
 
 - L1 cache <= 256KBytes
-- 
+- L2 cache >= 256KBytes
+- L1 association: 2, 4
+- L2 association: 4, 8
+- Cacheline size: 32, 64, 128
 
-To conduct our experiments we fully automate the procedure using a script that combines our previously created scripts.
+In cache memory setup optimization we have to balance the tradeoff between latency and size. Increasing the size the miss rate decreases but the latency also increases. Likewise decreasing the size means that the CPU will have to search for that block on the next level of memory (E.g. L1 $\Rightarrow$ L2). L1 cache is the memory closest to the CPU. To fully benefit from the first level cache's speed we keep its size below 256kB. The L2 cache has to be larger than the L1 cache and smaller than 4MB, as disclosed by the assignment. To keep the number of total benchmarks low we further decrease the largest possible L2 cache size value seeking to explore the CPU's behavior at around 256kB which is the largest L1 can get in our example. However we acknowledge the advantage of fitting more data into the second stage of cache in detriment of its speed. 
+
+L1 cache tends to benefit more from lower set associativity because it is closer direct mapping, the fastest mapping method, while also avoiding thrashing. L2 on the other hand benefits from higher set associativity since it reduces the cache misses. However, this makes it slower too. 
+
+Lastly, common cache line sizes include [32, 64 and 128](https://www.nic.uoregon.edu/~khuck/ts/acumem-report/manual_html/ch03s02.html) bytes.
+
+To conduct our experiments we fully automate the procedure using a [script](bash_scripts/cache_optimization.sh) that launches 1537 instances of the speclibm benchmark, covering the above theoretically viable parameter values.
+
+The results show a tie between multiple configurations timing at 0.019812 seconds of simulation time as shown below:
+
+![viable](spec_cpu2006/Results_5/viable_configs.png)
+
+The clear takeaways are:
+- Cacheline size = 128B
+- L2 cache size = 2MB
+- L1 instruction cache size = 128kB or 64kB
+
+The other parameters were not that impactful on this particular benchmark. This is to say they could be use interchangeably to yield the same results.
+
+In order to highlight the change each individual parameters bring about, we will select one of the viable winning configurations (the one aligned closest with the documentation), keep all other parameters constant and plot the results. 
+
+### Reference winning configuration
+- Cache line size = 128 bytes
+- L1 Instruction cache size = 64kBytes
+- L1 Instruction cache associativity = 2
+- L1 Data cache size = 64kBytes
+- L1 Data associativity = 2
+- L2 cache size = 2MBytes
+- L2 associativity = 8
+
+Note that apart from the simulated seconds plot, any other plots were included when observing significant variation in results. Even simulated seconds often times was identical and consequently any omission can be attributed there. 
+
+### Cache line size
+
+![simsecs](spec_cpu2006/Results_5/cacheline_simsec.png)
+
+![cpi](spec_cpu2006/Results_5/cacheline_cpi.png)
+
+![l1dmiss](spec_cpu2006/Results_5/cacheline_L1dmiss.png)
+
+### L1 instruction cache size
+
+![simsecs](spec_cpu2006/Results_5/L1i_simsec.png)
+
+![l1imiss](spec_cpu2006/Results_5/L1i_L1imiss.png)
+
+### L1 data cache size
+
+![simsecs](spec_cpu2006/Results_5/L1d_simsec.png)
+
+### L2 cache size
+
+![simsecs](spec_cpu2006/Results_5/L2_simsec.png)
+
+![cpi](spec_cpu2006/Results_5/L2_cpi.png)
+
+### Overall
+
+To more clearly see the emerging patterns we present the overall simulated seconds with regard to each parameter.
+
+![overall](spec_cpu2006/Results_5/overall_cachelinesize.png)
+
+![overall](spec_cpu2006/Results_5/overall_L1isize.png)
+
+![overall](spec_cpu2006/Results_5/overall_L1iassoc.png)
+
+![overall](spec_cpu2006/Results_5/overall_L1dsize.png)
+
+![overall](spec_cpu2006/Results_5/overall_L1dassoc.png)
+
+![overall](spec_cpu2006/Results_5/overall_L2size.png)
+
+![overall](spec_cpu2006/Results_5/overall_L2assoc.png)
 
 ## Step 5: Cost Function as a means for Performance Optimization
 
+The equation that can best illustrate the cost benefit relationship using the aforementioned variables is disclosed here:
+
+$$ Cost = $$
 
 ## Sources
 [1] https://www.gem5.org/documentation/general_docs/cpu_models/SimpleCPU  
@@ -403,4 +471,6 @@ To conduct our experiments we fully automate the procedure using a script that c
 [5] https://en.wikipedia.org/wiki/Double_data_rate  
 [6] https://www.linkedin.com/pulse/memory-hierarchies-how-cache-design-impacts-increasing-pradip-mudi-drspc  
 [7] https://medium.com/@mike.anderson007/the-cache-clash-l1-l2-and-l3-in-cpus-2a21d61a0c6b  
-[8] 
+[8] https://youtu.be/gr5M9CULUZw  
+[9] https://www.nic.uoregon.edu/~khuck/ts/acumem-report/manual_html/index.html  
+[10]   
