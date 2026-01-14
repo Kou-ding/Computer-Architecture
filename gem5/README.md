@@ -468,7 +468,9 @@ The equation that can best illustrate the cost - benefit relationship using the 
 - L2 associativity = $x_7$, where $D_{f(x_7)}$= {4, 8}
 
 Normalization:
+
 $$x_{inorm}=n_i=\frac{x_i + x_{imin}}{x_{imax} - x_{imin}}$$
+
 - Normalization is used to equalize the amount each parameter contributes to the final result and to be able to apply freely any multipliers afterwards 
 - Fractions are used for inversely proportional relationships
 - The 10 multipliers on $n_1$ and $n_6$ show the greater importance of cache line size and L2 size on the final result
@@ -476,10 +478,13 @@ $$x_{inorm}=n_i=\frac{x_i + x_{imin}}{x_{imax} - x_{imin}}$$
 - The 0.5 multiplier is used on each parameter that is thought to be of lesser importance to performance of monetary cost respectively
 - The 2 multiplier on L1 cache highlights the relatively higher price of making compared to L2 cache
 - The +1 on the denominator helps avoid division by zero and caps the result at 1 for $n_i = 0$
+
 $$ Cost_{Performance} =\frac{1}{10n_1 + 1} + n_2 +  0.5 \times n_3 + n_4 +  0.5 \times n_5 + \frac{1}{10n_6 + 1} +  0.5 \times \frac{1}{n_7 + 1}$$
+
 $$ Cost_{Money} =  0.1 \times (2 \times \frac{1}{n_2 + 1} + 0.5 \times n_3 + 2 \times \frac{1}{n_4 + 1} + 0.5 \times n_5 + n_6 + 0.5 \times n_7 )$$
 
 Therefore:
+
 $$ Cost = Cost_{Performance} + Cost_{Money} \Rightarrow$$
 $$ \Rightarrow Cost = \frac{1}{10n_1 + 1} + (\frac{n_2^2+n_2+0.2}{n_2+1}) + 0.55 \times n_3 + (\frac{n_3^2+n_3+0.2}{n_3+1}) + (\frac{n_4^2+n_4+0.2}{n_4+1}) + 0.55 \times n_5 + (\frac{n_6^2+0.1n_6+1}{10n_6+1}) + (\frac{0.05 n_6^2+0.05 n_7+0.5}{n_7+1}) $$
 
