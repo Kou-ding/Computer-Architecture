@@ -1,6 +1,6 @@
 ---
 title: Αρχιτεκτονική Προηγμένων Υπολογιστών και Επιταχυντών Gem5 Report
-author: Παπαδάκης Κωνσταντίνος Φώτιος - **ΑΕΜ** 10371
+author: Παπαδάκης Κωνσταντίνος Φώτιος - ΑΕΜ 10371
 ---
 
 # Gem5 Assignment
@@ -292,8 +292,6 @@ Here can be seen the:
 ![res1_l2cache](spec_cpu2006/Results_1/res1_l2cache.png)
 ![res1_insts](spec_cpu2006/Results_1/res1_insts.png)
 
-Comments: ///////////////////////**TO-DO**///////////////////////////////
-
 Afterwards we execute the same automation script adding the flags "--cpu-clock=1GHz", "--cpu-clock=4GHz". It is important to note that up to this point the default cpu-clock value has been 500 ticks $\Rightarrow$ 2GHz.
 
 ### CPU Clock 1GHz
@@ -335,15 +333,15 @@ All cores would run at the same frequency.
 
 #### Is there perfect scaling in different clock systems? If not why?
 
-No, we don't observe perfect scaling through our benchmarks. Cache misses values remain almost constant when comparing the 1GHz with the 4GHz CPUs, throughout all benchmarks. This means that the program will spend more cycles on a miss negatively affecting CPI. Additionally the system clock operate at the same clock which doesn't allow for perfect scaling along with the previous factors.
+No, we don't observe perfect scaling through our benchmarks. Cache misses values remain almost constant when comparing the 1GHz with the 4GHz CPUs, throughout all benchmarks. This means that the program will spend more cycles on a miss negatively affecting CPI. Additionally the system clock operates at the same clock which doesn't allow for perfect scaling along with the previous factors.
 
 Through the stats.txt findings we can confirm cpu clock speed that we set:
 
 - system.cpu_clk_domain.clock = 1000
 - system.cpu_clk_domain.clock = 250
 
-$$ T = 250 \times 10^{-12} and T = 1000 \times 10^{-12} $$
-$$ f = \frac{1}{T} = 4GHz and f = \frac{1}{T} = 1GHz $$
+$$ T = 250 \times 10^{-12} \quad \text{and} \quad T = 1000 \times 10^{-12} $$
+$$ f = \frac{1}{T} = 4GHz \quad \text{and} \quad f = \frac{1}{T} = 1GHz $$
 
 
 ### Memory type DDR3_2133_x64 (and CPU Clock 4GHz)
@@ -360,8 +358,8 @@ $$ f = \frac{1}{T} = 4GHz and f = \frac{1}{T} = 1GHz $$
 ![res4_icache](spec_cpu2006/Results_4/res4_icache.png)
 ![res4_l2cache](spec_cpu2006/Results_4/res4_l2cache.png)
 
-Observations:
-The simulation seconds have been slightly lowered though it is not statistically significant  ////// To do /////////
+Observations:  
+The simulation seconds have been slightly lowered though it is not statistically significant. This pattern applies to the rest of the system parameters as well 
 
 ## Step 4: Performance Optimization
 
@@ -413,7 +411,7 @@ In order to highlight the change each individual parameters bring about, we will
 - L2 cache size = 2MBytes
 - L2 associativity = 8
 
-Note that apart from the simulated seconds plot, any other plots were included when observing significant variation in results. Even simulated seconds often times was identical and consequently any omission can be attributed there. 
+Note that apart from the simulated seconds plot, any other plots were included when observing significant variation in results. Even simulated seconds often times was identical and consequently any omission can be attributed there. Additionally since CPI and simulated seconds go hand in hand the chosen main metric of choice was sim_seconds even though CPI can be used to compare different benchmarks / applications. If we were to use CPI to rank the results the difference would be minimal as for example the winning configurations were divided between $CPI = 1.981234$ and $CPI = 1.981237$ which goes to show that its a more precise metric. All in all every comment still applies.
 
 ### Cache line size
 
@@ -459,9 +457,49 @@ To more clearly see the emerging patterns we present the overall simulated secon
 
 ## Step 5: Cost Function as a means for Performance Optimization
 
-The equation that can best illustrate the cost benefit relationship using the aforementioned variables is disclosed here:
+The equation that can best illustrate the cost - benefit relationship using the aforementioned variables is disclosed here:
 
-$$ Cost = $$
+- Cache line size = $x_1$, where $D_{f(x_1)}$= {32, 64, 128}
+- L1 Instruction cache size = $x_2$, where $D_{f(x_2)}$= {16, 32, 64, 128}
+- L1 Instruction cache associativity = $x_3$, where $D_{f(x_3)}$= {2, 4}
+- L1 Data cache size = $x_4$, where $D_{f(x_4)}$= {16, 32, 64, 128}
+- L1 Data associativity = $x_5$, where $D_{f(x_5)}$= {2, 4}
+- L2 cache size = $x_6$, where $D_{f(x_6)}$= {256, 512, 1024, 2048}
+- L2 associativity = $x_7$, where $D_{f(x_7)}$= {4, 8}
+
+Normalization:
+$$x_{inorm}=n_i=\frac{x_i + x_{imin}}{x_{imax} - x_{imin}}$$
+- Normalization is used to equalize the amount each parameter contributes to the final result and to be able to apply freely any multipliers afterwards 
+- Fractions are used for inversely proportional relationships
+- The 10 multipliers on $n_1$ and $n_6$ show the greater importance of cache line size and L2 size on the final result
+- The 0.1 multiplier is used to reduce the effect of the monetary cost so that we can focus mainly on performance
+- The 0.5 multiplier is used on each parameter that is thought to be of lesser importance to performance of monetary cost respectively
+- The 2 multiplier on L1 cache highlights the relatively higher price of making compared to L2 cache
+- The +1 on the denominator helps avoid division by zero and caps the result at 1 for $n_i = 0$
+$$ Cost_{Performance} =\frac{1}{10n_1 + 1} + n_2 +  0.5 \times n_3 + n_4 +  0.5 \times n_5 + \frac{1}{10n_6 + 1} +  0.5 \times \frac{1}{n_7 + 1}$$
+$$ Cost_{Money} =  0.1 \times (2 \times \frac{1}{n_2 + 1} + 0.5 \times n_3 + 2 \times \frac{1}{n_4 + 1} + 0.5 \times n_5 + n_6 + 0.5 \times n_7 )$$
+
+Therefore:
+$$ Cost = Cost_{Performance} + Cost_{Money} \Rightarrow$$
+$$ \Rightarrow Cost = \frac{1}{10n_1 + 1} + (\frac{n_2^2+n_2+0.2}{n_2+1}) + 0.55 \times n_3 + (\frac{n_3^2+n_3+0.2}{n_3+1}) + (\frac{n_4^2+n_4+0.2}{n_4+1}) + 0.55 \times n_5 + (\frac{n_6^2+0.1n_6+1}{10n_6+1}) + (\frac{0.05 n_6^2+0.05 n_7+0.5}{n_7+1}) $$
+
+Minimizing the cost we observe that the approximate optimal solution is:
+- Cache line size = 128 bytes
+- L1 Instruction cache size = 16kBytes
+- L1 Instruction cache associativity = 2
+- L1 Data cache size = 16kBytes
+- L1 Data associativity = 2
+- L2 cache size = 2MBytes
+- L2 associativity = 8
+
+### Justification
+
+Having a large cache line size allows for higher space locality, assuming the data is grouped in a compact non-scattered way, since more data are available each time a block is fetched to L1.
+
+L1 needs to be simple. Low associativity and small size to reduce latency. Most accesses happen in L1 cache and even when they don't we hit L1 to see if the information we are seeking is there and then we ascend to the higher levels of cache to find it. Thus we need to keep our stay on this first level swift.
+
+L2 needs to have adequate size and high associativity to avoid checking the next memory level which in our case is DDR3. Having to go there is time inefficient thus we chose these values to reduce miss rate.
+
 
 ## Sources
 [1] https://www.gem5.org/documentation/general_docs/cpu_models/SimpleCPU  
@@ -473,4 +511,5 @@ $$ Cost = $$
 [7] https://medium.com/@mike.anderson007/the-cache-clash-l1-l2-and-l3-in-cpus-2a21d61a0c6b  
 [8] https://youtu.be/gr5M9CULUZw  
 [9] https://www.nic.uoregon.edu/~khuck/ts/acumem-report/manual_html/index.html  
-[10]   
+[10] Computer Architecture: A Quantitative Approach, John L. Hennessy, David A. Patterson  
+[11] https://en.wikipedia.org/wiki/CPU_cache
