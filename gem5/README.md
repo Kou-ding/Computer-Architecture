@@ -264,9 +264,11 @@ Some basic memory information that can be found on config.ini (or config.json) i
 
 To figure out the dram type, which is not explicitly states we can use the following values to produce it.
 
-$$\text{device\_bus\_width} \times \text{devices\_per\_rank} = \text{bus\_bits} \Rightarrow$$
+$$
+\text{device\_bus\_width} \times \text{devices\_per\_rank} = \text{bus\_bits} \Rightarrow
+$$
 
-$$\Rightarrow 8 \times 8 = 64-bit bus $$
+$$\Rightarrow 8 \times 8 = 64bit \ bus $$
 
 tCK = 1250ps
 
