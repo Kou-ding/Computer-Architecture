@@ -272,7 +272,7 @@ $$ freq = \frac{1}{tCK} = \frac{1}{10^{-12} \times 1250} = 800 MHz $$
 
 But since DDR transfers data on both edges this is doubled.
 
-$$ burst\_length = 8 \Rightarrow \text{typical of DDR3} $$
+$$ burst \ length = 8 \Rightarrow \text{typical of DDR3} $$
 
 Alternatively, tracing our steps from [se.py](spec_cpu2006/se.py) to [MemConfig.py](spec_cpu2006/MemConfig.py) and finally to [Options.py](spec_cpu2006/Options.py) we can clearly see that the default value, when not specifying the memory type with the relevant flag, is DDR3_1600_8x8.
 
