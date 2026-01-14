@@ -264,12 +264,14 @@ Some basic memory information that can be found on config.ini (or config.json) i
 
 To figure out the dram type, which is not explicitly states we can use the following values to produce it.
 
-$$device\_bus\_width \times devices\_per\_rank = bus\_bits\Rightarrow$$
+$$\text{device\_bus\_width} \times \text{devices\_per\_rank} = \text{bus\_bits} \Rightarrow$$
 
 $$\Rightarrow 8 \times 8 = 64-bit bus $$
+
 tCK = 1250ps
 
-$$ freq = \frac{1}{tCK} = \frac{1}{10^{-12}\times1250} = 800 MHz $$
+$$ freq = \frac{1}{tCK} = \frac{1}{10^{-12} \times 1250} = 800 MHz $$
+
 But since DDR transfers data on both edges this is doubled.
 
 $$ burst\_length = 8 \Rightarrow \text{typical of DDR3} $$
