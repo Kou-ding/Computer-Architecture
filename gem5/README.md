@@ -517,4 +517,5 @@ L2 needs to have adequate size and high associativity to avoid checking the next
 [8] https://youtu.be/gr5M9CULUZw  
 [9] https://www.nic.uoregon.edu/~khuck/ts/acumem-report/manual_html/index.html  
 [10] Computer Architecture: A Quantitative Approach, John L. Hennessy, David A. Patterson  
-[11] https://en.wikipedia.org/wiki/CPU_cache
+[11] https://en.wikipedia.org/wiki/CPU_cache  
+[12] https://www.cs.swarthmore.edu/~kwebb/cs31/f18/memhierarchy/caching.html
